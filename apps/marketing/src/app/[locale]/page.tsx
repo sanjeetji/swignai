@@ -1,0 +1,35 @@
+// Landing page — DB-driven content, server-rendered (ISR) for SEO (blueprint/08,21).
+// generateMetadata reads the page's SEO from the CMS; content comes from blocks.
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
+import { api } from "@swingai/api-client";
+import { BlockRenderer } from "../../components/BlockRenderer";
+
+export const revalidate = 3600; // ISR — refreshed on publish via on-demand revalidation
+
+export async function generateMetadata({ params: { locale } }: { params: { locale: string } }): Promise<Metadata> {
+  const page = await api.cmsPage("home", locale).catch(() => null);
+  return {
+    title: page?.seo?.title ?? "SwingAI",
+    description: page?.seo?.description,
+    alternates: { canonical: page?.seo?.canonical },
+  };
+}
+
+export default async function Home({ params: { locale } }: { params: { locale: string } }) {
+  const t = await getTranslations();
+  const [page, stats, testimonials] = await Promise.all([
+    api.cmsPage("home", locale).catch(() => ({ sections: [] as any[] })),
+    api.stats(locale).then((r) => r.stats ?? []).catch(() => []),
+    api.testimonials(locale).then((r) => r.testimonials ?? []).catch(() => []),
+  ]);
+
+  return (
+    <main className="min-h-screen bg-background text-foreground">
+      <BlockRenderer blocks={page.sections || []} stats={stats} testimonials={testimonials} />
+      <footer className="border-t border-border px-6 py-8 text-center text-xs text-muted-foreground">
+        {t("common.disclaimer")}
+      </footer>
+    </main>
+  );
+}

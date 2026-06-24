@@ -1,0 +1,10 @@
+{
+  "name": "SwingAI",
+  "shortName": "SwingAI",
+  "legalName": "SwingAI",
+  "tagline": "Disciplined swing trading, proven honestly.",
+  "domain": "swingai.in",
+  "supportEmail": "support@swingai.in",
+  "locales": ["en", "hi"],
+  "_note": "SINGLE SOURCE OF TRUTH for the platform name/brand. Backend reads this via app/brand.py; frontend reads it via NEXT_PUBLIC_* env. To rename the whole platform, change values here + run scripts/rename-brand.sh. Never hardcode the brand name anywhere else (use the brand config or the i18n 'brand.name' token)."
+}

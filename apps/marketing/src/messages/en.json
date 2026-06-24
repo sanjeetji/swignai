@@ -1,0 +1,6 @@
+{
+  "brand": { "name": "SwingAI" },
+  "nav": { "features": "Features", "pricing": "Pricing", "trackRecord": "Track Record", "login": "Log in", "signup": "Start free" },
+  "common": { "disclaimer": "Educational analysis only — not investment advice. We are not SEBI-registered investment advisers." },
+  "footer": { "rights": "All rights reserved." }
+}

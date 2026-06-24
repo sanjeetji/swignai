@@ -1,0 +1,7 @@
+{
+  "brand": { "name": "SwingAI" },
+  "dashboard": { "title": "Dashboard", "picks": "Today's Picks", "portfolio": "Portfolio", "cashMode": "Cash mode — no picks today (regime gate). Capital preserved." },
+  "auth": { "login": "Log in", "email": "Email", "password": "Password", "submit": "Log in" },
+  "admin": { "title": "Admin", "users": "Users", "events": "Event Logs" },
+  "common": { "disclaimer": "Educational analysis only — not investment advice." }
+}

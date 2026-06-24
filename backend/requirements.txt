@@ -1,0 +1,26 @@
+# Phase 0 — validation harness (quant + backtest)
+pandas>=2.0
+numpy>=1.24
+
+# Real NSE/BSE data (Phase 0 backtests + Phase 1 live). Optional for tests (synthetic provider).
+yfinance>=0.2.40
+
+# Dev / tests
+pytest>=8.0
+
+# --- Phase 1 (platform API) ---
+fastapi>=0.115
+uvicorn[standard]>=0.30
+sqlalchemy[asyncio]>=2.0
+aiosqlite>=0.20          # dev DB (zero-infra). prod: asyncpg + Postgres
+alembic
+asyncpg>=0.30
+redis
+pydantic[email]>=2.9
+pydantic-settings>=2.0
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart
+cryptography             # secrets vault (Fernet)
+pyotp                    # 2FA
+qrcode[pil]              # 2FA provisioning

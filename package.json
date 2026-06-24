@@ -1,0 +1,21 @@
+{
+  "name": "swingai",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SwingAI — disciplined swing-trading platform (Turborepo monorepo).",
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "dev:marketing": "turbo run dev --filter=@swingai/marketing",
+    "dev:dashboard": "turbo run dev --filter=@swingai/dashboard",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0",
+    "typescript": "^5.6.0"
+  },
+  "packageManager": "npm@10.9.0",
+  "engines": { "node": ">=18.18" }
+}

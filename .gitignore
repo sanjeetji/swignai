@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.log
+
+# Node / Next
+node_modules/
+.next/
+.turbo/
+dist/
+build/
+out/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Data / caches
+backend/.cache/
+*.sqlite3
+logs/
+.run/
+*.db
+swingai_dev.db

@@ -1,0 +1,72 @@
+// Typed client for the SwingAI FastAPI backend (blueprint/07).
+// One place the frontend talks to the API; never hardcode fetch URLs in components.
+
+export const API_BASE =
+  (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_BASE) || "http://localhost:9000";
+
+export interface Brand {
+  name: string; shortName: string; legalName: string;
+  tagline: string; domain: string; supportEmail: string;
+}
+
+export interface ThemePreset {
+  name: string; label: string;
+  tokensLight: Record<string, string>; tokensDark: Record<string, string>;
+}
+
+export interface Appearance {
+  defaults: { mode: string; preset: string; font: string; locale: string };
+  locked: Record<string, boolean>;
+  enabledLocales: string[];
+  maintenance: { on: boolean; message: string | null };
+  presets: ThemePreset[];
+}
+
+export interface TradePlan {
+  entry: number; stop: number; target_1: number; target_2: number;
+  rr_ratio: number; quantity: number; position_size: number;
+}
+export interface Pick {
+  symbol: string; score: number; breakdown: Record<string, number>;
+  regime: string; rsi: number; rel_strength: number; plan: TradePlan; disclaimer: string;
+}
+export interface DailyPicks { date: string; regime: string; cash_mode: boolean; picks: Pick[] }
+
+async function req<T>(path: string, init: RequestInit = {}, token?: string): Promise<T> {
+  const headers: Record<string, string> = { "Content-Type": "application/json", ...(init.headers as any) };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE}${path}`, { ...init, headers, cache: "no-store" });
+  if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
+  return res.json() as Promise<T>;
+}
+
+export const api = {
+  // public
+  brand: () => req<Brand>("/api/platform/brand"),
+  appearance: () => req<Appearance>("/api/platform/appearance"),
+  dailyPicks: (limit = 5) => req<DailyPicks>(`/api/daily-picks?limit=${limit}`),
+  cmsPage: (slug: string, locale = "en") => req<any>(`/api/cms/page/${slug}?locale=${locale}`),
+  testimonials: (locale = "en") => req<any>(`/api/cms/testimonials?locale=${locale}`),
+  stats: (locale = "en") => req<any>(`/api/cms/stats?locale=${locale}`),
+  trackRecord: () => req<any>("/api/track-record").catch(() => null),
+
+  // auth
+  register: (email: string, password: string, name?: string) =>
+    req<{ access_token: string }>("/api/auth/register", { method: "POST", body: JSON.stringify({ email, password, name }) }),
+  login: (email: string, password: string) =>
+    req<{ access_token: string }>("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+  me: (token: string) => req<any>("/api/auth/me", {}, token),
+
+  // user
+  analytics: (token: string) => req<any>("/api/analytics", {}, token),
+  portfolio: (token: string) => req<any>("/api/paper-trade/portfolio", {}, token),
+  paperBuy: (token: string, body: any) =>
+    req<any>("/api/paper-trade/buy", { method: "POST", body: JSON.stringify(body) }, token),
+
+  // admin
+  adminUsers: (token: string, q = "") => req<any>(`/api/admin/users?q=${encodeURIComponent(q)}`, {}, token),
+  eventLogs: (token: string, category?: string) =>
+    req<any>(`/api/admin/event-logs${category ? `?category=${category}` : ""}`, {}, token),
+  setAppearance: (token: string, body: any) =>
+    req<any>("/api/admin/settings/appearance", { method: "PUT", body: JSON.stringify(body) }, token),
+};
