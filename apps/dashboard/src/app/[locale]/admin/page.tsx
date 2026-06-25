@@ -1,60 +1,52 @@
 "use client";
-// Super Admin shell — users + event logs (full-page, blueprint/16,18,22). RBAC enforced
-// server-side; non-admins get 403 from the API. Sub-pages (appearance, integrations,
-// CMS, sessions, analytics) follow the same pattern — see STATUS.md for what's pending.
+// Admin overview — platform KPIs + pipeline rerun (blueprint/16,20).
 import { useEffect, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { api } from "@swingai/api-client";
-import { Card, ThemeToggle } from "@swingai/ui";
+import { Card, Button } from "@swingai/ui";
 import { useAuth } from "../../../lib/auth";
 
-export default function AdminPage() {
-  const router = useRouter();
-  const { locale } = useParams<{ locale: string }>();
+export default function AdminOverview() {
   const token = useAuth((s) => s.token);
-  const [users, setUsers] = useState<any>(null);
-  const [events, setEvents] = useState<any>(null);
+  const { locale } = useParams<{ locale: string }>();
+  const router = useRouter();
+  const [metrics, setMetrics] = useState<any>(null);
   const [denied, setDenied] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (token === null) return;
     if (!token) { router.push(`/${locale}/login`); return; }
-    api.adminUsers(token).then(setUsers).catch(() => setDenied(true));
-    api.eventLogs(token).then(setEvents).catch(() => {});
+    api.adminMetrics(token).then(setMetrics).catch(() => setDenied(true));
   }, [token, locale, router]);
 
-  if (denied) return <main className="p-10">403 — you don't have admin access.</main>;
+  if (denied) return <Card className="p-6">403 — you don't have admin access.</Card>;
+
+  const kpi = (label: string, value: string) => (
+    <Card className="p-5"><div className="text-sm text-muted-foreground">{label}</div>
+      <div className="mt-1 text-2xl font-semibold">{value}</div></Card>
+  );
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <header className="flex items-center justify-between border-b border-border px-6 py-4">
-        <h1 className="font-semibold">Admin</h1>
-        <ThemeToggle />
-      </header>
-      <section className="mx-auto max-w-5xl space-y-8 px-6 py-8">
-        <div>
-          <h2 className="mb-3 text-lg font-semibold">Users ({users?.total ?? "…"})</h2>
-          <Card className="divide-y divide-border">
-            {users?.users?.map((u: any) => (
-              <div key={u.id} className="flex items-center justify-between px-4 py-3 text-sm">
-                <span>{u.email}</span>
-                <span className="text-muted-foreground">{u.tier} {u.blocked ? "· blocked" : ""}</span>
-              </div>
-            ))}
-          </Card>
-        </div>
-        <div>
-          <h2 className="mb-3 text-lg font-semibold">Event Logs</h2>
-          <Card className="divide-y divide-border">
-            {events?.events?.slice(0, 20).map((e: any) => (
-              <div key={e.id} className="flex items-center justify-between px-4 py-2 text-xs">
-                <span className="font-mono">{e.type}</span>
-                <span className="text-muted-foreground">{e.category}/{e.level} · {e.created_at?.slice(0, 19)}</span>
-              </div>
-            ))}
-          </Card>
-        </div>
-      </section>
-    </main>
+    <div className="space-y-6">
+      <h1 className="text-xl font-semibold">Overview</h1>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {kpi("Users", String(metrics?.users ?? "…"))}
+        {kpi("Paper trades", String(metrics?.paper_trades ?? "…"))}
+        {kpi("MRR", `₹${metrics?.mrr ?? 0}`)}
+        {kpi("ARR", `₹${metrics?.arr ?? 0}`)}
+      </div>
+      <Card className="p-5">
+        <h2 className="font-semibold">Daily pipeline</h2>
+        <p className="text-sm text-muted-foreground">{metrics?.note}</p>
+        <Button className="mt-3" onClick={async () => {
+          if (!token) return;
+          setMsg("Running…");
+          try { const r = await api.rerunPipeline(token); setMsg(`Done: ${r.picks} picks (${r.regime}) for ${r.date}`); }
+          catch (e: any) { setMsg(String(e?.message || e).slice(0, 120)); }
+        }}>Re-run pipeline</Button>
+        {msg && <p className="mt-2 text-sm">{msg}</p>}
+      </Card>
+    </div>
   );
 }

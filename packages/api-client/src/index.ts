@@ -65,8 +65,23 @@ export const api = {
 
   // admin
   adminUsers: (token: string, q = "") => req<any>(`/api/admin/users?q=${encodeURIComponent(q)}`, {}, token),
-  eventLogs: (token: string, category?: string) =>
-    req<any>(`/api/admin/event-logs${category ? `?category=${category}` : ""}`, {}, token),
+  adminMetrics: (token: string) => req<any>("/api/admin/metrics", {}, token),
+  blockUser: (token: string, id: string) => req<any>(`/api/admin/users/${id}/block`, { method: "POST" }, token),
+  unblockUser: (token: string, id: string) => req<any>(`/api/admin/users/${id}/unblock`, { method: "POST" }, token),
+  forceLogout: (token: string, id: string) => req<any>(`/api/admin/users/${id}/force-logout`, { method: "POST" }, token),
+  eventLogs: (token: string, category?: string, level?: string) => {
+    const q = new URLSearchParams();
+    if (category) q.set("category", category);
+    if (level) q.set("level", level);
+    return req<any>(`/api/admin/event-logs?${q.toString()}`, {}, token);
+  },
+  getAppearance: (token: string) => req<any>("/api/admin/settings/appearance", {}, token),
   setAppearance: (token: string, body: any) =>
     req<any>("/api/admin/settings/appearance", { method: "PUT", body: JSON.stringify(body) }, token),
+  adminIntegrations: (token: string) => req<any>("/api/admin/integrations", {}, token),
+  upsertIntegration: (token: string, provider: string, body: any) =>
+    req<any>(`/api/admin/integrations/${provider}`, { method: "PUT", body: JSON.stringify(body) }, token),
+  testIntegration: (token: string, provider: string) =>
+    req<any>(`/api/admin/integrations/${provider}/test`, { method: "POST" }, token),
+  rerunPipeline: (token: string) => req<any>("/api/admin/rerun-pipeline", { method: "POST" }, token),
 };

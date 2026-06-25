@@ -172,6 +172,236 @@
         ]
       }
     },
+    "/api/me/preferences": {
+      "get": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Get Prefs",
+        "operationId": "get_prefs_api_me_preferences_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Set Prefs",
+        "operationId": "set_prefs_api_me_preferences_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrefsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/me/2fa/setup": {
+      "post": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Totp Setup",
+        "operationId": "totp_setup_api_me_2fa_setup_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/me/2fa/verify": {
+      "post": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Totp Verify",
+        "operationId": "totp_verify_api_me_2fa_verify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TotpVerifyIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/me/sessions": {
+      "get": {
+        "tags": [
+          "me"
+        ],
+        "summary": "My Sessions",
+        "operationId": "my_sessions_api_me_sessions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/me/logout-all": {
+      "post": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Logout All",
+        "operationId": "logout_all_api_me_logout_all_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/me/export": {
+      "get": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Export My Data",
+        "operationId": "export_my_data_api_me_export_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/me": {
+      "delete": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Delete My Account",
+        "operationId": "delete_my_account_api_me_delete",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
     "/api/daily-picks": {
       "get": {
         "tags": [
@@ -611,6 +841,51 @@
         }
       }
     },
+    "/api/admin/users/{user_id}/force-logout": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Force Logout",
+        "operationId": "force_logout_api_admin_users__user_id__force_logout_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/users/{user_id}/unblock": {
       "post": {
         "tags": [
@@ -925,6 +1200,31 @@
             }
           }
         }
+      }
+    },
+    "/api/admin/rerun-pipeline": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Rerun Pipeline",
+        "description": "Manually re-run the daily pipeline (idempotent upsert). Audit-logged.",
+        "operationId": "rerun_pipeline_api_admin_rerun_pipeline_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
       }
     },
     "/api/admin/audit-log": {
@@ -1303,6 +1603,56 @@
         ],
         "title": "PaperCloseIn"
       },
+      "PrefsIn": {
+        "properties": {
+          "theme_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Theme Mode"
+          },
+          "theme_preset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Theme Preset"
+          },
+          "font": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Font"
+          },
+          "locale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locale"
+          }
+        },
+        "type": "object",
+        "title": "PrefsIn"
+      },
       "RegisterIn": {
         "properties": {
           "email": {
@@ -1351,6 +1701,19 @@
           "access_token"
         ],
         "title": "TokenOut"
+      },
+      "TotpVerifyIn": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "title": "TotpVerifyIn"
       },
       "UserOut": {
         "properties": {
