@@ -79,3 +79,52 @@ def relative_strength(close: pd.Series, index_close: pd.Series, lookback: int = 
     stock_ret = close.pct_change(lookback) * 100.0
     index_ret = idx.pct_change(lookback) * 100.0
     return stock_ret - index_ret
+
+
+# --- advanced indicators (educational analysis depth) ---
+def bollinger(close: pd.Series, period: int = 20, mult: float = 2.0):
+    """Returns (mid, upper, lower, %b). %b = position within the bands (0=lower,1=upper)."""
+    mid = sma(close, period)
+    sd = close.rolling(period, min_periods=period).std()
+    upper, lower = mid + mult * sd, mid - mult * sd
+    pct_b = (close - lower) / (upper - lower)
+    return mid, upper, lower, pct_b
+
+
+def stochastic(high: pd.Series, low: pd.Series, close: pd.Series, k: int = 14, d: int = 3):
+    """Stochastic oscillator %K and %D (0-100)."""
+    ll = low.rolling(k, min_periods=k).min()
+    hh = high.rolling(k, min_periods=k).max()
+    pct_k = 100.0 * (close - ll) / (hh - ll)
+    return pct_k, pct_k.rolling(d, min_periods=d).mean()
+
+
+def adx(high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14) -> pd.Series:
+    """Average Directional Index — trend strength (not direction). >25 = trending."""
+    up = high.diff()
+    down = -low.diff()
+    plus_dm = ((up > down) & (up > 0)) * up
+    minus_dm = ((down > up) & (down > 0)) * down
+    tr = true_range(high, low, close)
+    atr_ = tr.ewm(alpha=1.0 / period, adjust=False, min_periods=period).mean()
+    plus_di = 100.0 * plus_dm.ewm(alpha=1.0 / period, adjust=False).mean() / atr_
+    minus_di = 100.0 * minus_dm.ewm(alpha=1.0 / period, adjust=False).mean() / atr_
+    dx = 100.0 * (plus_di - minus_di).abs() / (plus_di + minus_di).replace(0.0, np.nan)
+    return dx.ewm(alpha=1.0 / period, adjust=False, min_periods=period).mean()
+
+
+def obv(close: pd.Series, volume: pd.Series) -> pd.Series:
+    """On-Balance Volume — cumulative volume flow (accumulation/distribution)."""
+    direction = np.sign(close.diff()).fillna(0.0)
+    return (direction * volume).cumsum()
+
+
+def pct_from_high(close: pd.Series, window: int = 252) -> pd.Series:
+    """Distance below the rolling N-day high, in % (0 = at the high)."""
+    roll_high = close.rolling(window, min_periods=1).max()
+    return (close - roll_high) / roll_high * 100.0
+
+
+def pct_from_low(close: pd.Series, window: int = 252) -> pd.Series:
+    roll_low = close.rolling(window, min_periods=1).min()
+    return (close - roll_low) / roll_low * 100.0

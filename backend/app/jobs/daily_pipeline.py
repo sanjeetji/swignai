@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import logging
 
-import pandas as pd
 from sqlalchemy import select
 
 from ..config import DEFAULT
@@ -19,7 +18,7 @@ from ..llm import generate_explanation
 from ..models.trading import AIPick, RegimeLog
 from ..quant import picker as picker_mod
 from ..quant import regime as regime_mod
-from ..quant.features import build_features
+from ..quant.features import analysis_dict, build_features
 from ..services import event_log as ev
 
 logger = logging.getLogger("daily_pipeline")
@@ -68,7 +67,9 @@ async def run() -> dict:
             row.entry_price, row.stop_loss = p.plan.entry, p.plan.stop
             row.target_1, row.target_2, row.rr_ratio = p.plan.target_1, p.plan.target_2, p.plan.rr_ratio
             row.position_size_suggested = p.plan.position_size
-            row.indicators = {"rsi": p.rsi, "rel_strength": p.rel_strength}
+            # full deterministic math snapshot for this pick (educational depth)
+            feat_row = feats[p.symbol].iloc[-1]
+            row.indicators = analysis_dict(feat_row)
             row.explanation_hinglish = expl
             row.actual_result = "still_open"
             payload_picks.append({"symbol": p.symbol, "score": p.score, "plan": plan,

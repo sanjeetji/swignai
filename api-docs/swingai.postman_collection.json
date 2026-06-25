@@ -1007,6 +1007,29 @@
           }
         }
       ]
+    },
+    {
+      "name": "stocks",
+      "item": [
+        {
+          "name": "Stock Analysis",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/stocks/{symbol}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "stocks",
+                "{symbol}"
+              ]
+            }
+          }
+        }
+      ]
     }
   ],
   "variable": [

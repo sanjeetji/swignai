@@ -445,6 +445,46 @@
         }
       }
     },
+    "/api/stocks/{symbol}": {
+      "get": {
+        "tags": [
+          "stocks"
+        ],
+        "summary": "Stock Analysis",
+        "operationId": "stock_analysis_api_stocks__symbol__get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/paper-trade/buy": {
       "post": {
         "tags": [

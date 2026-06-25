@@ -83,7 +83,24 @@ Ran `app.cli backtest --days 600` on **real NSE data via yfinance** (~20 large-c
 | Max drawdown | 21.4% |
 | By regime | bull −0.215R, neutral +0.425R, bear ~flat (gate working) |
 
-**Verdict:** the deterministic textbook-indicator funnel, as currently parameterized, **loses money** on recent real data. This is exactly what Phase 0 is for — it caught this cheaply *before* scaling. **Do not treat the live picks as a proven edge.** Honest next options (do NOT skip): (1) parameter study + proper walk-forward on a wider, point-in-time universe; (2) replace the textbook signals with a genuinely researched edge (relative-strength/regime focus, better entries); (3) accept the edge isn't there with these signals and pivot the product to *risk-discipline + education + paper-trading* (still valuable per blueprint/00) rather than "winning picks". The platform plumbing is real; the **strategy is not yet validated**.
+**Out-of-sample study (2026-06-25):** ran 6 principled variants (wider stops, longer hold, concentrate, tighter entry, combos) on ~4y real data with a **train/test split (60/40)**. Result: **every variant is POSITIVE in-sample (train +0.22…+0.37R) but NEGATIVE out-of-sample (test −0.03…−0.17R).** That train-positive/test-negative pattern is the classic **overfitting signature — there is no durable edge** in the textbook-indicator approach. Best OOS = −0.025R (tighter_entry), still negative.
+
+**Verdict:** the deterministic textbook-indicator funnel **has no real (out-of-sample) edge** and loses money net of costs. This is exactly what Phase 0 is for — it caught this cheaply *before* scaling. **Chasing more parameter tweaks will keep overfitting.** The honest path is to stop selling "winning picks" and reframe the product (see recommendation). **Do not treat the live picks as a proven edge.** Honest next options (do NOT skip): (1) parameter study + proper walk-forward on a wider, point-in-time universe; (2) replace the textbook signals with a genuinely researched edge (relative-strength/regime focus, better entries); (3) accept the edge isn't there with these signals and pivot the product to *risk-discipline + education + paper-trading* (still valuable per blueprint/00) rather than "winning picks". The platform plumbing is real; the **strategy is not yet validated**.
+
+## DIRECTION (2026-06-25) — honest swing-trading screener on real data
+
+Decision: keep the platform **focused on swing trading**; reframe honestly (educational
+technical screening + transparent tracker, NOT "guaranteed winning picks"); keep edge
+research in the background. The screener is **fully deterministic math on real prices** —
+no guessing. Enriched with advanced indicators: EMA 20/50/100/200 + SMA200, RSI, MACD,
+ATR, **ADX** (trend strength), **Stochastic**, **Bollinger %b**, volume ratio, **OBV**
+(accumulation), **52-week** range, relative strength, distance-to-breakout.
+- New `GET /api/stocks/{symbol}` — full math breakdown + the 6 swing conditions + score +
+  trade plan on REAL prices (verified live for HAL). Educational disclaimer enforced.
+- `/api/daily-picks` now serves the pipeline's stored picks from the DB (real-data, fast),
+  with live compute as fallback. Pipeline stores the full analysis snapshot per pick.
+- **Honest note:** richer math = better *analysis/education*, NOT proven edge (the OOS study
+  still says no durable edge). The tracker will show, transparently, whether it works.
 
 ## INITIAL STATE (baseline)
 Greenfield 2026-06-24. Now: full spec (23 areas) + Phase-0 harness + Phase-1 foundation (backend booting, frontend scaffolded). Resume anytime via [HOW-TO-BUILD.md](./HOW-TO-BUILD.md) §4 prompt.

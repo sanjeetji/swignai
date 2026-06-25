@@ -1,21 +1,28 @@
 """Daily picks — serves the deterministic quant engine output (blueprint/04,07).
 
-In Phase 1 this runs the picker live against the configured data provider. In
-production the daily cron pre-computes and caches in Redis; here we compute on
-demand (cached) so the endpoint is real, not mocked.
+Primary path: read today's pre-computed picks from the DB (`ai_picks`), populated by
+the daily pipeline on REAL data (fast, no per-request market calls). Fallback: compute
+live from the configured provider (used in dev/synthetic before the pipeline has run).
+Framed as educational screening — not advice (blueprint/09).
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy import desc, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import DEFAULT
 from ..core.config import settings
+from ..core.db import get_db
 from ..data.factory import get_provider
 from ..llm import generate_explanation
+from ..models.trading import AIPick, RegimeLog
 from ..quant import picker as picker_mod
-from ..quant.features import build_features
+from ..quant.features import analysis_dict, build_features
 
 router = APIRouter(tags=["picks"])
+
+DISCLAIMER = "Educational technical screening from real prices — not investment advice."
 
 
 def _load_features(provider):
@@ -28,35 +35,53 @@ def _load_features(provider):
     return feats, index_close
 
 
+async def _from_db(db: AsyncSession, limit: int):
+    """Return today's pre-computed picks (latest date_generated) from the DB."""
+    latest = (await db.execute(select(AIPick.date_generated).order_by(desc(AIPick.date_generated)).limit(1))).scalar_one_or_none()
+    if latest is None:
+        return None
+    rows = (await db.execute(
+        select(AIPick).where(AIPick.date_generated == latest).order_by(desc(AIPick.score)).limit(limit)
+    )).scalars().all()
+    reg = (await db.get(RegimeLog, latest))
+    regime = reg.regime if reg else (rows[0].regime if rows else "unknown")
+    return {
+        "date": str(latest), "regime": regime, "cash_mode": len(rows) == 0, "source": "pipeline",
+        "disclaimer": DISCLAIMER,
+        "picks": [{
+            "symbol": r.stock_symbol, "score": float(r.score) if r.score is not None else None,
+            "breakdown": r.score_breakdown, "regime": r.regime, "analysis": r.indicators,
+            "plan": {"entry": float(r.entry_price), "stop": float(r.stop_loss),
+                     "target_1": float(r.target_1), "target_2": float(r.target_2),
+                     "rr_ratio": float(r.rr_ratio), "position_size": float(r.position_size_suggested or 0)},
+            "explanation_hinglish": r.explanation_hinglish,
+        } for r in rows],
+    }
+
+
 @router.get("/api/daily-picks")
-async def daily_picks(limit: int = Query(5, ge=1, le=10)):
+async def daily_picks(limit: int = Query(5, ge=1, le=10), db: AsyncSession = Depends(get_db)):
+    # 1) prefer the pipeline's stored picks (real data, fast)
+    from_db = await _from_db(db, limit)
+    if from_db is not None:
+        return from_db
+
+    # 2) fallback: compute live from the configured provider (dev/synthetic)
     provider = get_provider(settings.DATA_PROVIDER,
                             **({"days": 600} if settings.DATA_PROVIDER == "synthetic" else {}))
     feats, index_close = _load_features(provider)
     date = index_close.index[-1]
     picks = picker_mod.get_top_picks(date, feats, index_close, settings.DEFAULT_CAPITAL, DEFAULT)[:limit]
-
     out = []
     for p in picks:
-        plan = {
-            "entry": p.plan.entry, "stop": p.plan.stop,
-            "target_1": p.plan.target_1, "target_2": p.plan.target_2,
-            "rr_ratio": p.plan.rr_ratio, "quantity": p.plan.quantity,
-            "position_size": p.plan.position_size,
-        }
-        pick_dict = {"symbol": p.symbol, "plan": plan, "rsi": p.rsi,
-                     "rel_strength": p.rel_strength, "regime": p.regime, "date": str(date.date())}
-        explanation = await generate_explanation(pick_dict)
-        out.append({
-            "symbol": p.symbol, "score": p.score, "breakdown": p.breakdown,
-            "regime": p.regime, "rsi": p.rsi, "rel_strength": p.rel_strength,
-            "plan": plan, "explanation_hinglish": explanation,
-            "disclaimer": "Educational technical analysis only — not investment advice.",
-        })
-
-    return {
-        "date": str(date.date()),
-        "regime": picks[0].regime if picks else "bear/none",
-        "cash_mode": len(picks) == 0,
-        "picks": out,
-    }
+        plan = {"entry": p.plan.entry, "stop": p.plan.stop, "target_1": p.plan.target_1,
+                "target_2": p.plan.target_2, "rr_ratio": p.plan.rr_ratio,
+                "quantity": p.plan.quantity, "position_size": p.plan.position_size}
+        expl = await generate_explanation({"symbol": p.symbol, "plan": plan, "rsi": p.rsi,
+                                           "rel_strength": p.rel_strength, "regime": p.regime,
+                                           "date": str(date.date())})
+        out.append({"symbol": p.symbol, "score": p.score, "breakdown": p.breakdown,
+                    "regime": p.regime, "analysis": analysis_dict(feats[p.symbol].iloc[-1]),
+                    "plan": plan, "explanation_hinglish": expl})
+    return {"date": str(date.date()), "regime": picks[0].regime if picks else "bear/none",
+            "cash_mode": len(picks) == 0, "source": "live", "disclaimer": DISCLAIMER, "picks": out}

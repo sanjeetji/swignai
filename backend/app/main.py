@@ -17,7 +17,7 @@ from . import brand
 from .core.config import settings
 from .core.db import init_db
 from .core.ratelimit import allow
-from .routers import admin, auth, cms, health, me, metrics, paper, picks, platform
+from .routers import admin, auth, cms, health, me, metrics, paper, picks, platform, stocks
 
 
 @asynccontextmanager
@@ -71,8 +71,8 @@ async def correlation_and_ratelimit(request: Request, call_next):
     return response
 
 
-for r in (health.router, platform.router, auth.router, me.router, picks.router, paper.router,
-          cms.router, admin.router, metrics.router):
+for r in (health.router, platform.router, auth.router, me.router, picks.router, stocks.router,
+          paper.router, cms.router, admin.router, metrics.router):
     app.include_router(r)
 
 

@@ -38,7 +38,11 @@ class YFinanceProvider:
 
     def _download(self, symbol: str, start, end) -> pd.DataFrame:
         yf = self._yf()
-        df = yf.download(symbol, start=start, end=end, progress=False, auto_adjust=True)
+        # default to ~2y of history when no range is given (enough for 200-EMA warmup)
+        if start is None and end is None:
+            df = yf.download(symbol, period="2y", progress=False, auto_adjust=True)
+        else:
+            df = yf.download(symbol, start=start, end=end, progress=False, auto_adjust=True)
         if df is None or df.empty:
             return pd.DataFrame(columns=OHLCV_COLUMNS)
         if isinstance(df.columns, pd.MultiIndex):
