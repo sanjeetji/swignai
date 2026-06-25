@@ -29,6 +29,7 @@ start() {
   clean_next                # always start dev with a clean .next (avoids vendor-chunks error)
   log "Starting marketing (:$MARKETING_PORT) + dashboard (:$DASHBOARD_PORT)…"
   ( cd "$ROOT_DIR" && NEXT_PUBLIC_API_BASE="http://localhost:$BACKEND_PORT" \
+      NEXT_PUBLIC_DASHBOARD_URL="http://localhost:$DASHBOARD_PORT" \
       nohup npm run dev >>"$LOGF" 2>&1 & echo $! >"$PIDF" )
   wait_for_port "$DASHBOARD_PORT" "dashboard :$DASHBOARD_PORT" 120 || true
   wait_for_port "$MARKETING_PORT" "marketing :$MARKETING_PORT" 60 || true

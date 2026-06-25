@@ -1,7 +1,30 @@
 {
   "brand": { "name": "SwingAI" },
-  "dashboard": { "title": "Dashboard", "picks": "Today's Picks", "portfolio": "Portfolio", "cashMode": "Cash mode — no picks today (regime gate). Capital preserved." },
-  "auth": { "login": "Log in", "email": "Email", "password": "Password", "submit": "Log in" },
+  "nav": { "dashboard": "Dashboard", "analyze": "Analyze", "logout": "Logout", "admin": "Admin" },
+  "dashboard": {
+    "title": "Dashboard",
+    "picks": "Today's Picks",
+    "portfolio": "Portfolio",
+    "performance": "Your performance",
+    "positionSizing": "Position sizing",
+    "cashMode": "Cash mode — no picks today (regime gate). Capital preserved.",
+    "noClosedTrades": "No closed trades yet — your honest stats appear here.",
+    "expectancy": "Expectancy (R)", "winRate": "Win rate", "profitFactor": "Profit factor", "trades": "Trades",
+    "capital": "Capital", "open": "Open", "heat": "Heat"
+  },
+  "analyze": {
+    "title": "Analyze a stock",
+    "placeholder": "e.g. HAL, INFY, SBIN",
+    "button": "Analyze",
+    "analyzing": "Analyzing…",
+    "error": "No analysis available for that symbol (need enough price history)."
+  },
+  "auth": {
+    "login": "Log in", "signup": "Create account", "email": "Email", "password": "Password",
+    "name": "Name", "submit": "Log in", "submitSignup": "Sign up",
+    "noAccount": "New here? Create an account", "haveAccount": "Already have an account? Log in",
+    "invalid": "Invalid email or password", "exists": "That email is already registered"
+  },
   "admin": { "title": "Admin", "users": "Users", "events": "Event Logs" },
-  "common": { "disclaimer": "Educational analysis only — not investment advice." }
+  "common": { "disclaimer": "Educational analysis only — not investment advice.", "loading": "Loading…", "language": "Language" }
 }

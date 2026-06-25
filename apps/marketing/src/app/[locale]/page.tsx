@@ -36,7 +36,7 @@ export default async function Home({ params: { locale } }: { params: { locale: s
 
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <BlockRenderer blocks={sections} stats={stats} testimonials={testimonials} />
+      <BlockRenderer blocks={sections} stats={stats} testimonials={testimonials} locale={locale} />
       <footer className="border-t border-border px-6 py-8 text-center text-xs text-muted-foreground">
         {t("common.disclaimer")}
       </footer>

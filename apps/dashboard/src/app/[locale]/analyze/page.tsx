@@ -1,13 +1,15 @@
 "use client";
-// Analyze any stock — on-demand deterministic technical analysis (blueprint/08).
-// Reuses the shared StockAnalysisView; data from /api/stocks/{symbol} (real prices).
+// Analyze any stock — auth-gated, localized chrome. Data from /api/stocks/{symbol}.
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import { api } from "@swingai/api-client";
-import { Card, Button, ThemeToggle, StockAnalysisView, type StockAnalysisData } from "@swingai/ui";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { api } from "@swingai/api-client";
+import { Card, Button, ThemeToggle, LanguageSwitcher, StockAnalysisView, type StockAnalysisData } from "@swingai/ui";
+import { RequireAuth } from "../../../components/RequireAuth";
 
-export default function AnalyzePage() {
+function AnalyzeInner() {
+  const t = useTranslations();
   const { locale } = useParams<{ locale: string }>();
   const [symbol, setSymbol] = useState("HAL");
   const [data, setData] = useState<StockAnalysisData | null>(null);
@@ -19,8 +21,8 @@ export default function AnalyzePage() {
     setBusy(true); setErr(null); setData(null);
     try {
       setData(await api.stockAnalysis(symbol.trim()));
-    } catch (e: any) {
-      setErr("No analysis available for that symbol (need enough price history).");
+    } catch {
+      setErr(t("analyze.error"));
     } finally { setBusy(false); }
   }
 
@@ -28,20 +30,24 @@ export default function AnalyzePage() {
     <main className="min-h-screen bg-background text-foreground">
       <header className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
-          <Link href={`/${locale}/dashboard`} className="text-sm text-muted-foreground hover:underline">← Dashboard</Link>
-          <h1 className="font-semibold">Analyze a stock</h1>
+          <Link href={`/${locale}/dashboard`} className="text-sm text-muted-foreground hover:underline">← {t("nav.dashboard")}</Link>
+          <h1 className="font-semibold">{t("analyze.title")}</h1>
         </div>
-        <ThemeToggle />
+        <div className="flex items-center gap-2"><LanguageSwitcher /><ThemeToggle /></div>
       </header>
       <section className="mx-auto max-w-3xl space-y-6 px-6 py-8">
         <form onSubmit={run} className="flex gap-2">
-          <input value={symbol} onChange={(e) => setSymbol(e.target.value)} placeholder="e.g. HAL, INFY, SBIN"
+          <input value={symbol} onChange={(e) => setSymbol(e.target.value)} placeholder={t("analyze.placeholder")}
             className="flex-1 rounded-md border border-border bg-transparent px-3 py-2 text-sm" />
-          <Button type="submit" disabled={busy}>{busy ? "Analyzing…" : "Analyze"}</Button>
+          <Button type="submit" disabled={busy}>{busy ? t("analyze.analyzing") : t("analyze.button")}</Button>
         </form>
         {err && <Card className="p-5 text-sm text-destructive">{err}</Card>}
         {data && <StockAnalysisView data={data} />}
       </section>
     </main>
   );
+}
+
+export default function AnalyzePage() {
+  return <RequireAuth><AnalyzeInner /></RequireAuth>;
 }

@@ -3,7 +3,8 @@
 // (non-admins get 403 from the API); this is the navigation chrome.
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
-import { ThemeToggle } from "@swingai/ui";
+import { ThemeToggle, LanguageSwitcher } from "@swingai/ui";
+import { RequireAuth } from "../../../components/RequireAuth";
 
 const NAV = [
   ["", "Overview"], ["users", "Users"], ["appearance", "Appearance"],
@@ -15,6 +16,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const base = `/${locale}/admin`;
   return (
+    <RequireAuth>
     <div className="min-h-screen bg-background text-foreground">
       <header className="flex items-center justify-between border-b border-border px-6 py-3">
         <div className="flex items-center gap-2">
@@ -22,6 +24,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
         <div className="flex items-center gap-3">
           <Link href={`/${locale}/dashboard`} className="text-sm text-muted-foreground hover:underline">← Dashboard</Link>
+          <LanguageSwitcher />
           <ThemeToggle />
         </div>
       </header>
@@ -41,5 +44,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <main className="min-w-0 flex-1">{children}</main>
       </div>
     </div>
+    </RequireAuth>
   );
 }

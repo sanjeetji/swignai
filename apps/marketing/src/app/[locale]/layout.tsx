@@ -4,6 +4,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { ThemeProvider } from "@swingai/ui";
 import { api } from "@swingai/api-client";
+import { Header } from "../../components/Header";
 
 export async function generateMetadata(): Promise<Metadata> {
   const brand = await api.brand().catch(() => null);
@@ -29,7 +30,10 @@ export default async function LocaleLayout({
     <html lang={locale} suppressHydrationWarning>
       <body>
         <NextIntlClientProvider messages={messages}>
-          <ThemeProvider preset={preset}>{children}</ThemeProvider>
+          <ThemeProvider preset={preset}>
+            <Header />
+            {children}
+          </ThemeProvider>
         </NextIntlClientProvider>
       </body>
     </html>

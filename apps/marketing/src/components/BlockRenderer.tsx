@@ -5,8 +5,18 @@ import { Card, Button } from "@swingai/ui";
 
 type Block = { type: string; content: any };
 
-export function BlockRenderer({ blocks, stats, testimonials }: {
-  blocks: Block[]; stats?: any[]; testimonials?: any[];
+const DASH = process.env.NEXT_PUBLIC_DASHBOARD_URL || "http://localhost:9001";
+
+// Auth CTAs (/signup, /login) live in the dashboard app; everything else stays local.
+function resolveHref(href: string | undefined, locale: string): string {
+  if (!href) return "#";
+  if (href.includes("signup")) return `${DASH}/${locale}/signup`;
+  if (href.includes("login")) return `${DASH}/${locale}/login`;
+  return href;
+}
+
+export function BlockRenderer({ blocks, stats, testimonials, locale = "en" }: {
+  blocks: Block[]; stats?: any[]; testimonials?: any[]; locale?: string;
 }) {
   return (
     <>
@@ -18,7 +28,7 @@ export function BlockRenderer({ blocks, stats, testimonials }: {
                 <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">{b.content.heading}</h1>
                 <p className="mx-auto mt-5 max-w-2xl text-lg text-muted-foreground">{b.content.subheading}</p>
                 {b.content.cta && (
-                  <a href={b.content.cta.href} className="mt-8 inline-block">
+                  <a href={resolveHref(b.content.cta.href, locale)} className="mt-8 inline-block">
                     <Button size="lg">{b.content.cta.label}</Button>
                   </a>
                 )}
@@ -68,7 +78,7 @@ export function BlockRenderer({ blocks, stats, testimonials }: {
               <section key={i} className="mx-auto max-w-5xl px-6 py-20 text-center">
                 <h2 className="text-3xl font-bold">{b.content.heading}</h2>
                 {b.content.cta && (
-                  <a href={b.content.cta.href} className="mt-6 inline-block">
+                  <a href={resolveHref(b.content.cta.href, locale)} className="mt-6 inline-block">
                     <Button size="lg">{b.content.cta.label}</Button>
                   </a>
                 )}

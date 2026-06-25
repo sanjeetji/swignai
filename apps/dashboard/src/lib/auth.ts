@@ -7,6 +7,7 @@ const KEY = "swingai_token";
 
 interface AuthState {
   token: string | null;
+  loaded: boolean;            // has localStorage been read yet? (distinguishes "no token" from "not loaded")
   setToken: (t: string | null) => void;
   load: () => void;
   logout: () => void;
@@ -14,6 +15,7 @@ interface AuthState {
 
 export const useAuth = create<AuthState>((set) => ({
   token: null,
+  loaded: false,
   setToken: (t) => {
     if (typeof window !== "undefined") {
       if (t) localStorage.setItem(KEY, t);
@@ -22,7 +24,9 @@ export const useAuth = create<AuthState>((set) => ({
     set({ token: t });
   },
   load: () => {
-    if (typeof window !== "undefined") set({ token: localStorage.getItem(KEY) });
+    if (typeof window !== "undefined") {
+      set({ token: localStorage.getItem(KEY), loaded: true });
+    }
   },
   logout: () => {
     if (typeof window !== "undefined") localStorage.removeItem(KEY);
