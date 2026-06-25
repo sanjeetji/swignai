@@ -80,17 +80,30 @@ LAST COMPLETED UNIT: Full Phase-1 foundation.
   ADDED endpoints (now 27): /api/track-record + /api/analytics (honest, no fabrication),
     admin GET appearance, admin /metrics, integration test (vault encrypt→decrypt verified,
     masked hint, secret never returned). Dashboard RiskCalculator + marketing track-record page.
-NEXT UNIT (pick one, continue feature-by-feature):
-  (a) `scripts/swingai.sh start` → verify both apps in the browser end-to-end.
-  (b) Admin sub-pages: appearance editor, integrations/secrets UI, user-detail+sessions,
-      CMS block composer (TipTap+dnd), analytics charts, event-log filters/live-tail.
-  (c) Dashboard depth: wire RiskCalculator→paper-buy, journal, expectancy/equity curve.
-  (d) Real cron pipeline + Redis caching + Angel One data + LLM explanations.
-  (e) Alembic migrations (replace dev create_all), 2FA, rate-limiting, Supabase prod.
-BLOCKERS / NOTES: trading edge still UNPROVEN (run real-data backtest, R1). SEBI+DPDP
-  lawyer before public launch (R2/R9). Auth is dev-grade (token in localStorage) — move
-  to Supabase/httpOnly cookies for prod (blueprint/19). Frontend not yet `npm install`-ed/
-  browser-verified here. Working tree uncommitted. Docker DB containers currently UP.
+  SINCE THEN (all verified, committed locally):
+    - Colima auto-start in scripts (ensure_docker).
+    - LLM layer (template Hinglish + pluggable provider, Redis-cached); wired into daily-picks.
+    - Jobs: daily_pipeline + exit_checker + APScheduler (off by default) + admin rerun-pipeline.
+    - Hardening: /api/me (2FA TOTP, prefs, sessions, DPDP export/delete), admin force-logout,
+      per-IP rate limit. Alembic baseline migration (upgrade head builds 35 tables — verified).
+    - Dashboard: RiskCalculator→paper-buy + journal + personal analytics (buy→close→analytics
+      chain VERIFIED end-to-end). Admin control plane: overview, users (block/unblock/force-logout),
+      appearance editor, integrations/secrets UI (+test), event-log viewer with filters.
+    - FRONTEND BUILDS CLEAN: `npm install` + `next build` pass for BOTH apps (all routes compile).
+    - API now 36 endpoints; api-docs/ regenerated.
+  🔴 PHASE-0 GATE RUN — REAL-DATA BACKTEST (yfinance, ~600d, ~20 NSE large-caps, net of costs):
+    expectancy −0.149R, return −21.3%, profit factor 0.52, win 26.8%, maxDD 21.4%, 127 trades.
+    => The strategy as-configured HAS NO EDGE (loses money). See blueprint/STATUS.md "PHASE-0 RESULT".
+NEXT UNIT (the honest priority is now the STRATEGY, not more features):
+  (a) ⭐ Rework the strategy (R1): parameter study + proper walk-forward on a wider,
+      point-in-time universe; lead with relative-strength/regime; better entries — OR
+  (b) accept textbook signals have no edge and PIVOT the product to risk-discipline +
+      education + paper-trading (still valuable per blueprint/00), dropping "winning picks", OR
+  (c) if pausing strategy work: real cron/Redis/Angel One data, Supabase prod, CMS composer.
+BLOCKERS / NOTES: 🔴 trading edge is NEGATIVE on real data (R1 — the platform plumbing works,
+  the strategy does not). SEBI+DPDP lawyer before public launch (R2/R9). Auth dev-grade
+  (token in localStorage) → Supabase/httpOnly for prod. 2 local commits awaiting push permission;
+  this chunk uncommitted. Docker DB containers UP.
 ```
 
 Update these lines after every work session. An AI resuming the project reads this first.

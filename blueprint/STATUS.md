@@ -15,7 +15,7 @@ _Last updated: 2026-06-24 · Phase 0 (validation) harness built & green (23 test
 
 | Phase | Goal | Status |
 |---|---|---|
-| **0 — Validation** | Prove the trading edge (backtest) | 🧪 **Partial** — harness ✅ built & tested; real-data run pending (the gate) |
+| **0 — Validation** | Prove the trading edge (backtest) | 🔴 **EDGE NOT PROVEN** — real-data backtest run; the strategy as-configured has NEGATIVE expectancy (see Phase-0 result below). Harness ✅ works; **strategy needs rework before scaling** |
 | **1 — MVP** | Survival+process, platform plane, marketing | 🛠️ **In progress** — backend spine ✅ booting (23 endpoints); frontend monorepo + both apps scaffolded; feature depth in progress |
 | **2 — Beta** | Retention, alerts, SEO, analytics | 📝 Spec |
 | **3 — Business** | Subscriptions, scale, Android, RA license | 📝 Spec |
@@ -68,6 +68,22 @@ _Last updated: 2026-06-24 · Phase 0 (validation) harness built & green (23 test
 1. **Run the real-data backtest** (`pip install yfinance`; `python -m app.cli backtest --days 600`) → Phase-0 go/no-go gate (R1). ⬅ still the most important
 2. `npm install` + boot both apps against the API; verify end-to-end in the browser.
 3. Feature depth: admin editors (appearance/integrations/CMS composer/user-detail), dashboard risk-calculator + journal + expectancy/equity-curve + track-record page, real cron + Redis + Angel One + LLM explanations, 2FA + rate-limit, Alembic + Supabase/Postgres.
+
+## 🔴 PHASE-0 RESULT — real-data backtest (the go/no-go gate, blueprint/05, risk R1)
+
+Ran `app.cli backtest --days 600` on **real NSE data via yfinance** (~20 large-caps, ~2 years), net of costs:
+
+| Metric | Value |
+|---|---|
+| Trades | 127 |
+| **Expectancy (avg R)** | **−0.149** ❌ (need > 0) |
+| Return | **−21.3%** |
+| Win rate (incl. scratches) | 26.8% (34W / 68L / 25 scratch) |
+| Profit factor | 0.52 (need > 1) |
+| Max drawdown | 21.4% |
+| By regime | bull −0.215R, neutral +0.425R, bear ~flat (gate working) |
+
+**Verdict:** the deterministic textbook-indicator funnel, as currently parameterized, **loses money** on recent real data. This is exactly what Phase 0 is for — it caught this cheaply *before* scaling. **Do not treat the live picks as a proven edge.** Honest next options (do NOT skip): (1) parameter study + proper walk-forward on a wider, point-in-time universe; (2) replace the textbook signals with a genuinely researched edge (relative-strength/regime focus, better entries); (3) accept the edge isn't there with these signals and pivot the product to *risk-discipline + education + paper-trading* (still valuable per blueprint/00) rather than "winning picks". The platform plumbing is real; the **strategy is not yet validated**.
 
 ## INITIAL STATE (baseline)
 Greenfield 2026-06-24. Now: full spec (23 areas) + Phase-0 harness + Phase-1 foundation (backend booting, frontend scaffolded). Resume anytime via [HOW-TO-BUILD.md](./HOW-TO-BUILD.md) §4 prompt.

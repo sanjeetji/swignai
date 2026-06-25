@@ -25,9 +25,20 @@ def _provider(args):
     return get_provider("yfinance")
 
 
+def _date_range(args):
+    """For real data, derive an explicit start/end so yfinance returns enough bars
+    (calendar days ≈ 1.6× trading days). Synthetic ignores this."""
+    if args.synthetic:
+        return None, None
+    end = pd.Timestamp.today().normalize()
+    start = end - pd.Timedelta(days=int(args.days * 1.6) + 30)
+    return start, end
+
+
 def cmd_backtest(args):
     provider = _provider(args)
-    res = run_backtest(provider, capital=args.capital)
+    start, end = _date_range(args)
+    res = run_backtest(provider, start=start, end=end, capital=args.capital)
     print("\n=== BACKTEST SUMMARY (net of costs) ===")
     print(json.dumps(res.summary, indent=2))
     print("\n=== BY REGIME ===")
