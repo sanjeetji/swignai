@@ -20,11 +20,28 @@ function DashboardInner() {
   const [picks, setPicks] = useState<DailyPicks | null>(null);
   const [portfolio, setPortfolio] = useState<any>(null);
   const [analytics, setAnalytics] = useState<any>(null);
+  const [tradeMsg, setTradeMsg] = useState<{ symbol: string; ok: boolean; text: string } | null>(null);
+  const [tradingSym, setTradingSym] = useState<string | null>(null);
 
   const refresh = useCallback((tok: string) => {
     api.portfolio(tok).then(setPortfolio).catch(() => {});
     api.analytics(tok).then(setAnalytics).catch(() => {});
   }, []);
+
+  async function paperTrade(p: any) {
+    if (!token) return;
+    setTradingSym(p.symbol); setTradeMsg(null);
+    try {
+      await api.paperBuy(token, {
+        stock_symbol: p.symbol, entry_price: p.plan.entry, stop_loss: p.plan.stop,
+        target: p.plan.target_1, quantity: p.plan.quantity, entry_reason: "from daily pick",
+      });
+      setTradeMsg({ symbol: p.symbol, ok: true, text: `${t("dashboard.tradeOpened")}: ${p.plan.quantity} ${p.symbol}` });
+      refresh(token);
+    } catch (e: any) {
+      setTradeMsg({ symbol: p.symbol, ok: false, text: `${t("dashboard.tradeFailed")}: ${String(e?.message || e).slice(0, 90)}` });
+    } finally { setTradingSym(null); }
+  }
 
   useEffect(() => {
     if (!token) return;
@@ -85,6 +102,15 @@ function DashboardInner() {
                   {(p as any).explanation_hinglish && (
                     <p className="mt-3 rounded-md bg-muted/40 p-2 text-sm">{(p as any).explanation_hinglish}</p>
                   )}
+                  <div className="mt-3 flex items-center gap-3">
+                    <Button size="sm" disabled={tradingSym === p.symbol}
+                      onClick={() => paperTrade(p)}>
+                      {tradingSym === p.symbol ? t("dashboard.placing") : t("dashboard.paperTrade")}
+                    </Button>
+                    {tradeMsg?.symbol === p.symbol && (
+                      <span className={`text-sm ${tradeMsg.ok ? "text-success" : "text-destructive"}`}>{tradeMsg.text}</span>
+                    )}
+                  </div>
                 </Card>
               ))}
             </div>

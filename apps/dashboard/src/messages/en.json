@@ -10,7 +10,8 @@
     "cashMode": "Cash mode — no picks today (regime gate). Capital preserved.",
     "noClosedTrades": "No closed trades yet — your honest stats appear here.",
     "expectancy": "Expectancy (R)", "winRate": "Win rate", "profitFactor": "Profit factor", "trades": "Trades",
-    "capital": "Capital", "open": "Open", "heat": "Heat"
+    "capital": "Capital", "open": "Open", "heat": "Heat",
+    "paperTrade": "Paper trade this", "placing": "Placing…", "tradeOpened": "Paper trade opened", "tradeFailed": "Could not place trade"
   },
   "analyze": {
     "title": "Analyze a stock",

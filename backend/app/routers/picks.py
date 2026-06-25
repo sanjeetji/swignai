@@ -53,7 +53,8 @@ async def _from_db(db: AsyncSession, limit: int):
             "breakdown": r.score_breakdown, "regime": r.regime, "analysis": r.indicators,
             "plan": {"entry": float(r.entry_price), "stop": float(r.stop_loss),
                      "target_1": float(r.target_1), "target_2": float(r.target_2),
-                     "rr_ratio": float(r.rr_ratio), "position_size": float(r.position_size_suggested or 0)},
+                     "rr_ratio": float(r.rr_ratio), "position_size": float(r.position_size_suggested or 0),
+                     "quantity": int(float(r.position_size_suggested or 0) / float(r.entry_price)) if r.entry_price else 0},
             "explanation_hinglish": r.explanation_hinglish,
         } for r in rows],
     }

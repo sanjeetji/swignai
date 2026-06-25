@@ -20,6 +20,8 @@ start() {
 
 stop() {
   if pid_alive "$PIDF"; then kill "$(cat "$PIDF")" 2>/dev/null || true; fi
+  # also kill any stray uvicorn on our port (prevents a stale instance holding :9000)
+  lsof -ti ":$BACKEND_PORT" -sTCP:LISTEN 2>/dev/null | xargs kill 2>/dev/null || true
   rm -f "$PIDF"; ok "backend stopped"
 }
 

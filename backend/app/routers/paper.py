@@ -31,7 +31,7 @@ async def buy(body: PaperBuyIn, user: User = Depends(get_current_user), db: Asyn
     if risk_per_share <= 0:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Stop must be below entry")
     rr = (body.target - body.entry_price) / risk_per_share
-    if rr < DEFAULT.min_rr:
+    if rr < DEFAULT.min_rr - 0.01:   # tolerance: stored pick values are rounded to 2dp
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"R:R {rr:.2f} < required {DEFAULT.min_rr}")
 
     capital = float(user.capital_amount)
