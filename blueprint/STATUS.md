@@ -99,8 +99,14 @@ ATR, **ADX** (trend strength), **Stochastic**, **Bollinger %b**, volume ratio, *
   trade plan on REAL prices (verified live for HAL). Educational disclaimer enforced.
 - `/api/daily-picks` now serves the pipeline's stored picks from the DB (real-data, fast),
   with live compute as fallback. Pipeline stores the full analysis snapshot per pick.
-- **Honest note:** richer math = better *analysis/education*, NOT proven edge (the OOS study
-  still says no durable edge). The tracker will show, transparently, whether it works.
+- **Live real-data pipeline (verified 2026-06-25):** with `DATA_PROVIDER=yfinance`, the daily
+  pipeline computed **5 real swing candidates** (SBIN, MARUTI, ICICIBANK, AXISBANK, LT; bull
+  regime) → stored in `ai_picks` → `/api/daily-picks` serves them from the DB (source=pipeline)
+  with full analysis + Hinglish. Public `/stocks/[symbol]` SEO page + dashboard `/analyze`
+  surface the math. Scheduler verified (3:30 PM pipeline, 3:45 PM exit-checker IST) — enable via
+  `ENABLE_SCHEDULER=true`; or trigger on demand via Admin → Re-run pipeline.
+- **Honest note:** richer math + real data = better *analysis/education*, NOT proven edge (the OOS
+  study still says no durable edge). The tracker will show, transparently, whether it works.
 
 ## INITIAL STATE (baseline)
 Greenfield 2026-06-24. Now: full spec (23 areas) + Phase-0 harness + Phase-1 foundation (backend booting, frontend scaffolded). Resume anytime via [HOW-TO-BUILD.md](./HOW-TO-BUILD.md) §4 prompt.
