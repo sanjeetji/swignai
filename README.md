@@ -2,6 +2,8 @@
 
 An AI-native Indian swing-trading platform — **a risk-management & discipline platform that also gives stock ideas**, not a tip service. See [`blueprint/`](./blueprint/) for the complete spec.
 
+**Maintainer:** Sanjeet Kumar ([@sanjeetji](https://github.com/sanjeetji))
+
 > **Start here:** [`blueprint/README.md`](./blueprint/README.md) (index) → [`blueprint/HOW-TO-BUILD.md`](./blueprint/HOW-TO-BUILD.md) (build order + **resume prompt**).
 
 ## The 3 non-negotiables
