@@ -14,10 +14,19 @@ install_deps() {
   fi
 }
 
+# Clear Next.js build caches — prevents the stale `.next` / vendor-chunks error that
+# happens when a production `next build` and `next dev` share the same .next dir.
+clean_next() {
+  rm -rf "$ROOT_DIR/apps/dashboard/.next" "$ROOT_DIR/apps/marketing/.next" \
+         "$ROOT_DIR/.turbo" "$ROOT_DIR/node_modules/.cache" 2>/dev/null || true
+  ok ".next caches cleared"
+}
+
 start() {
   if pid_alive "$PIDF"; then warn "frontend already running (pid $(cat "$PIDF"))"; return 0; fi
   ensure_docker || exit 1   # ensures the runtime is up (no-op if already running)
   install_deps
+  clean_next                # always start dev with a clean .next (avoids vendor-chunks error)
   log "Starting marketing (:$MARKETING_PORT) + dashboard (:$DASHBOARD_PORT)…"
   ( cd "$ROOT_DIR" && NEXT_PUBLIC_API_BASE="http://localhost:$BACKEND_PORT" \
       nohup npm run dev >>"$LOGF" 2>&1 & echo $! >"$PIDF" )
@@ -44,7 +53,8 @@ case "${1:-start}" in
   stop) stop ;;
   restart) stop; start ;;
   install) install_deps ;;
+  clean) clean_next ;;
   status) if pid_alive "$PIDF"; then ok "frontend running (pid $(cat "$PIDF"))"; else warn "frontend not running"; fi ;;
   logs) tail -f "$LOGF" ;;
-  *) echo "usage: frontend.sh [start|stop|status|restart|install|logs]"; exit 1 ;;
+  *) echo "usage: frontend.sh [start|stop|status|restart|install|clean|logs]"; exit 1 ;;
 esac
