@@ -24,9 +24,19 @@ export default async function Home({ params: { locale } }: { params: { locale: s
     api.testimonials(locale).then((r) => r.testimonials ?? []).catch(() => []),
   ]);
 
+  // Safety fallback so the landing is never blank (e.g. backend momentarily down).
+  const sections = page.sections?.length ? page.sections : [{
+    type: "hero",
+    content: {
+      heading: "Disciplined swing trading, proven honestly.",
+      subheading: "Risk-managed NSE swing setups, transparent track record, and paper trading to prove it.",
+      cta: { label: "Start free", href: `/${locale}/signup` },
+    },
+  }];
+
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <BlockRenderer blocks={page.sections || []} stats={stats} testimonials={testimonials} />
+      <BlockRenderer blocks={sections} stats={stats} testimonials={testimonials} />
       <footer className="border-t border-border px-6 py-8 text-center text-xs text-muted-foreground">
         {t("common.disclaimer")}
       </footer>

@@ -13,12 +13,18 @@ router = APIRouter(tags=["cms"])
 
 
 # ---------------- Public (server-rendered by Next ISR) ----------------
-@router.get("/api/cms/page/{slug}")
-async def public_page(slug: str, locale: str = "en", db: AsyncSession = Depends(get_db)):
-    page = (await db.execute(
+async def _published_page(db, slug, locale):
+    return (await db.execute(
         select(CmsPage).where(CmsPage.slug == slug, CmsPage.status == "published",
                               CmsPage.locale == locale)
     )).scalar_one_or_none()
+
+
+@router.get("/api/cms/page/{slug}")
+async def public_page(slug: str, locale: str = "en", db: AsyncSession = Depends(get_db)):
+    page = await _published_page(db, slug, locale)
+    if page is None and locale != "en":           # fall back to the default-locale content
+        page = await _published_page(db, slug, "en")
     if page is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Page not found")
     sections = (await db.execute(
@@ -33,9 +39,13 @@ async def public_page(slug: str, locale: str = "en", db: AsyncSession = Depends(
 
 @router.get("/api/cms/testimonials")
 async def testimonials(locale: str = "en", db: AsyncSession = Depends(get_db)):
-    rows = (await db.execute(
-        select(Testimonial).where(Testimonial.locale == locale).order_by(Testimonial.sort_order)
-    )).scalars().all()
+    async def fetch(loc):
+        return (await db.execute(
+            select(Testimonial).where(Testimonial.locale == loc).order_by(Testimonial.sort_order)
+        )).scalars().all()
+    rows = await fetch(locale)
+    if not rows and locale != "en":
+        rows = await fetch("en")
     return {"testimonials": [
         {"author": t.author_name, "role": t.role, "company": t.company,
          "quote": t.quote, "rating": t.rating, "featured": t.is_featured} for t in rows
@@ -44,9 +54,13 @@ async def testimonials(locale: str = "en", db: AsyncSession = Depends(get_db)):
 
 @router.get("/api/cms/stats")
 async def stats(locale: str = "en", db: AsyncSession = Depends(get_db)):
-    rows = (await db.execute(
-        select(StatMetric).where(StatMetric.locale == locale).order_by(StatMetric.sort_order)
-    )).scalars().all()
+    async def fetch(loc):
+        return (await db.execute(
+            select(StatMetric).where(StatMetric.locale == loc).order_by(StatMetric.sort_order)
+        )).scalars().all()
+    rows = await fetch(locale)
+    if not rows and locale != "en":
+        rows = await fetch("en")
     return {"stats": [
         {"key": s.key, "label": s.label, "value": s.value, "suffix": s.suffix, "live": s.is_live}
         for s in rows
