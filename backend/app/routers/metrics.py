@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.db import get_db
 from ..core.security import get_current_user, require_permissions
-from ..models.trading import PaperTrade
+from ..models.trading import AIPick, PaperTrade
 from ..models.user import User
 
 router = APIRouter(tags=["metrics"])
@@ -40,13 +40,38 @@ def _summarize(trades: list[PaperTrade]) -> dict:
     }
 
 
+def _summarize_screener(picks: list[AIPick]) -> dict:
+    """Honest record of the SCREENER's own resolved picks (R-multiples)."""
+    closed = [p for p in picks if p.actual_result in ("hit_target", "hit_stoploss", "scratch", "time_exit")]
+    if not closed:
+        return {"resolved": 0, "open": len(picks), "note": "no resolved picks yet"}
+    rs = [float(p.actual_r_multiple or 0) for p in closed]
+    wins = [p for p in closed if (p.actual_r_multiple or 0) > 0.05]
+    losses = [p for p in closed if (p.actual_r_multiple or 0) < -0.05]
+    scratches = [p for p in closed if -0.05 <= (p.actual_r_multiple or 0) <= 0.05]
+    decided = len(wins) + len(losses) + len(scratches)
+    return {
+        "resolved": len(closed), "open": len(picks) - len(closed),
+        "expectancy_r": round(mean(rs), 3),
+        "win_rate_pct": round(len(wins) / decided * 100, 1) if decided else 0,
+        "wins": len(wins), "losses": len(losses), "scratches": len(scratches),
+        "hit_target": sum(1 for p in closed if p.actual_result == "hit_target"),
+        "hit_stoploss": sum(1 for p in closed if p.actual_result == "hit_stoploss"),
+    }
+
+
 @router.get("/api/track-record")
 async def track_record(db: AsyncSession = Depends(get_db)):
-    """Public honest scorecard across all paper trades (the trust weapon)."""
-    rows = (await db.execute(select(PaperTrade))).scalars().all()
-    out = _summarize(list(rows))
-    out["disclaimer"] = "Educational record of screened setups — not advice. Past results do not guarantee future returns."
-    return out
+    """Public honest scorecard — the SCREENER's resolved picks AND user paper trades."""
+    picks = (await db.execute(select(AIPick))).scalars().all()
+    trades = (await db.execute(select(PaperTrade))).scalars().all()
+    return {
+        "screener": _summarize_screener(list(picks)),   # did our picks work? (the moat)
+        "paper_trades": _summarize(list(trades)),        # what users actually did
+        "disclaimer": "Educational record of screened setups — not advice. "
+                      "Win% counts wins/(wins+losses+scratches), in R-multiples, net. "
+                      "Past results do not guarantee future returns.",
+    }
 
 
 @router.get("/api/analytics")
