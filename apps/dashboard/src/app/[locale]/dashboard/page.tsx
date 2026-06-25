@@ -43,6 +43,7 @@ export default function DashboardPage() {
       <header className="flex items-center justify-between border-b border-border px-6 py-4">
         <h1 className="font-semibold">{t("title")}</h1>
         <div className="flex items-center gap-3">
+          <a href={`/${locale}/analyze`} className="text-sm text-muted-foreground hover:underline">Analyze</a>
           <span className="text-sm text-muted-foreground">{me?.email}</span>
           <ThemeToggle />
           <Button variant="outline" size="sm" onClick={() => { logout(); router.push(`/${locale}/login`); }}>Logout</Button>

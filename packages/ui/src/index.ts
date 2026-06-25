@@ -5,3 +5,5 @@ export { Button } from "./components/button";
 export { Card } from "./components/card";
 export { KpiStat } from "./components/kpi-stat";
 export { ThemeToggle } from "./components/theme-toggle";
+export { StockAnalysisView } from "./components/stock-analysis";
+export type { StockAnalysisData } from "./components/stock-analysis";

@@ -46,6 +46,7 @@ export const api = {
   appearance: () => req<Appearance>("/api/platform/appearance"),
   dailyPicks: (limit = 5) => req<DailyPicks>(`/api/daily-picks?limit=${limit}`),
   cmsPage: (slug: string, locale = "en") => req<any>(`/api/cms/page/${slug}?locale=${locale}`),
+  stockAnalysis: (symbol: string) => req<any>(`/api/stocks/${encodeURIComponent(symbol)}`),
   testimonials: (locale = "en") => req<any>(`/api/cms/testimonials?locale=${locale}`),
   stats: (locale = "en") => req<any>(`/api/cms/stats?locale=${locale}`),
   trackRecord: () => req<any>("/api/track-record").catch(() => null),
