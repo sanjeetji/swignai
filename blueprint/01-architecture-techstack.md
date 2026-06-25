@@ -19,6 +19,15 @@
 
 > If you'd prefer the simpler single-app monolith (one `apps/web`), it's still viable — but you lose the Lighthouse isolation and the easy OmniMark reuse. The docs below assume the two-app split; collapsing to one app is a mechanical change.
 
+> **⚠️ "Two apps" is NOT "two websites" — it is ONE website.**
+> | Concept | Reality |
+> |---|---|
+> | One domain / brand / SEO authority | ✅ `swingai.in` — marketing at root, dashboard at `/app` (or `app.` subdomain), one CDN |
+> | Two apps (`apps/marketing` + `apps/dashboard`) | Just how the *code* is split, so the public site stays light |
+> | Two ports (dev `9002` / `9001`) | **Local development only** — each `npm run dev` server needs its own port; in production both sit behind one domain |
+>
+> Decision confirmed (2026-06-25): keep the two-app monorepo (ADR #29).
+
 ---
 
 ## 2. Monorepo structure

@@ -8,6 +8,7 @@ LOGF="$LOG_DIR/backend.log"
 
 start() {
   if pid_alive "$PIDF"; then warn "backend already running (pid $(cat "$PIDF"))"; return 0; fi
+  ensure_docker || exit 1   # backend connects to the Dockerized Postgres
   ensure_venv
   log "Starting FastAPI on :$BACKEND_PORT (DB=$DATABASE_URL)…"
   ( cd "$BACKEND_DIR" && DATABASE_URL="$DATABASE_URL" REDIS_URL="$REDIS_URL" \

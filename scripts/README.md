@@ -14,6 +14,11 @@ All scripts source [`_common.sh`](./_common.sh) (the single source of truth for 
 
 Override any port inline, e.g. `BACKEND_PORT=9100 scripts/backend.sh start`.
 
+> **Colima auto-start:** the `start` actions check the Docker daemon first and, if it's down,
+> automatically run `colima start` and wait until it's ready before continuing — so you don't
+> need to run `colima start` by hand. (No-op when Docker is already running. Requires Colima
+> installed; otherwise you'll get a clear message to start Docker manually.)
+
 ---
 
 ## 🎛️ `swingai.sh` — master control (use this 90% of the time)

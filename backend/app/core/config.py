@@ -36,6 +36,13 @@ class Settings(BaseSettings):
     DATA_PROVIDER: str = "synthetic"     # synthetic | yfinance | angelone | dhan
     DEFAULT_CAPITAL: float = 100000.0
 
+    # --- jobs / LLM ---
+    ENABLE_SCHEDULER: bool = False       # off in dev/tests; true in prod to run cron jobs
+    LLM_PROVIDER: str = "template"       # template | gemini | openrouter | anthropic | openai
+
+    # --- rate limiting ---
+    RATE_LIMIT_PER_MIN: int = 120        # per-IP default for sensitive/public endpoints
+
     # --- geo / sessions ---
     GEOIP_ENABLED: bool = False          # IP->city lookup (blueprint/18); off in dev
 

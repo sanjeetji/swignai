@@ -21,6 +21,7 @@ banner() {
 
 start_all() {
   banner
+  ensure_docker || exit 1
   bash "$SCRIPT_DIR/db.sh" start
   bash "$SCRIPT_DIR/backend.sh" start
   bash "$SCRIPT_DIR/frontend.sh" start

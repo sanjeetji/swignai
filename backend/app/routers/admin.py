@@ -61,6 +61,24 @@ async def block_user(user_id: str, req: Request, admin=Depends(require_permissio
     return {"id": str(user.id), "blocked": True}
 
 
+@router.post("/users/{user_id}/force-logout")
+async def force_logout(user_id: str, admin=Depends(require_permissions("users.read")),
+                       db: AsyncSession = Depends(get_db)):
+    user = await db.get(User, uuid.UUID(user_id))
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    n = 0
+    for s in (await db.execute(select(UserSession).where(UserSession.user_id == user.id))).scalars():
+        if s.is_active:
+            s.is_active = False
+            s.revoked_at = datetime.now(timezone.utc)
+            n += 1
+    await ev.admin(db, "session.force_logout", user=admin, resource="user", resource_id=user.id,
+                   payload={"revoked": n})
+    await db.commit()
+    return {"id": str(user.id), "revoked": n}
+
+
 @router.post("/users/{user_id}/unblock")
 async def unblock_user(user_id: str, admin=Depends(require_permissions("users.block")),
                        db: AsyncSession = Depends(get_db)):
@@ -182,6 +200,19 @@ async def event_logs(category: str | None = None, level: str | None = None,
          "request_id": e.request_id, "created_at": str(e.created_at), "payload": e.payload}
         for e in rows
     ]}
+
+
+@router.post("/rerun-pipeline")
+async def rerun_pipeline(admin=Depends(require_permissions("picks.override")),
+                         db: AsyncSession = Depends(get_db)):
+    """Manually re-run the daily pipeline (idempotent upsert). Audit-logged."""
+    from ..jobs.daily_pipeline import run as daily_run
+    result = await daily_run()
+    await ev.admin(db, "pipeline.rerun", user=admin, resource="ai_picks",
+                   payload={"date": result.get("date"), "count": len(result.get("picks", []))})
+    await db.commit()
+    return {"ok": True, "date": result.get("date"), "regime": result.get("regime"),
+            "picks": len(result.get("picks", []))}
 
 
 @router.get("/audit-log")

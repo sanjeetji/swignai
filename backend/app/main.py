@@ -11,10 +11,13 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
+from fastapi.responses import JSONResponse
+
 from . import brand
 from .core.config import settings
 from .core.db import init_db
-from .routers import admin, auth, cms, health, metrics, paper, picks, platform
+from .core.ratelimit import allow
+from .routers import admin, auth, cms, health, me, metrics, paper, picks, platform
 
 
 @asynccontextmanager
@@ -23,7 +26,13 @@ async def lifespan(app: FastAPI):
     await init_db()
     from .seed import seed_if_empty
     await seed_if_empty()
+    if settings.ENABLE_SCHEDULER:
+        from .jobs.scheduler import start_scheduler
+        start_scheduler()
     yield
+    if settings.ENABLE_SCHEDULER:
+        from .jobs.scheduler import shutdown_scheduler
+        shutdown_scheduler()
 
 
 app = FastAPI(
@@ -42,16 +51,27 @@ app.add_middleware(
 )
 
 
+_RATE_LIMITED_PREFIXES = ("/api/auth", "/api/me/2fa")
+
+
 @app.middleware("http")
-async def correlation_id(request: Request, call_next):
+async def correlation_and_ratelimit(request: Request, call_next):
     # request_id threads through event-log entries for tracing (blueprint/22)
     request.state.request_id = request.headers.get("x-request-id") or uuid.uuid4().hex[:16]
+    # per-IP rate limit on auth/sensitive paths (fails open on limiter error)
+    if any(request.url.path.startswith(p) for p in _RATE_LIMITED_PREFIXES):
+        ip = request.client.host if request.client else "unknown"
+        try:
+            if not allow(f"{ip}:{request.url.path}", settings.RATE_LIMIT_PER_MIN):
+                return JSONResponse({"detail": "Too many requests"}, status_code=429)
+        except Exception:
+            pass
     response = await call_next(request)
     response.headers["x-request-id"] = request.state.request_id
     return response
 
 
-for r in (health.router, platform.router, auth.router, picks.router, paper.router,
+for r in (health.router, platform.router, auth.router, me.router, picks.router, paper.router,
           cms.router, admin.router, metrics.router):
     app.include_router(r)
 

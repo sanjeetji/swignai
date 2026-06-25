@@ -4,6 +4,11 @@
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_common.sh"
 
 cmd="${1:-start}"
+# actions that REQUIRE Docker running → ensure Colima/Docker is up first.
+# (status/stop are read-only-ish and degrade gracefully, so they don't force-start)
+case "$cmd" in
+  start|wait|psql|redis-cli|reset) ensure_docker || exit 1 ;;
+esac
 case "$cmd" in
   start)
     log "Starting SwingAI Postgres (:$DB_PORT) + Redis (:$REDIS_PORT)…"

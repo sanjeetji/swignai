@@ -3,8 +3,8 @@
 # Keep this the single source of truth for ports, URLs, and paths.
 set -euo pipefail
 
-# --- paths ---
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# --- paths --- (BASH_SOURCE guard so `source _common.sh` is safe under `set -u`)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 BACKEND_DIR="$ROOT_DIR/backend"
 RUN_DIR="$ROOT_DIR/.run"        # pid files
@@ -65,5 +65,28 @@ ensure_venv() {
     "$VENV_DIR/bin/pip" install -q --upgrade pip
     "$VENV_DIR/bin/pip" install -q -r "$BACKEND_DIR/requirements.txt"
     ok "venv ready"
+  fi
+}
+
+# Ensure the Docker daemon is reachable; auto-start Colima if it's the runtime.
+# Idempotent + fast: a no-op when Docker is already up. Returns non-zero if it
+# can't get Docker running so callers stop instead of failing cryptically.
+ensure_docker() {
+  if docker info &>/dev/null; then return 0; fi
+  warn "Docker daemon not reachable."
+  if command -v colima &>/dev/null; then
+    log "Starting Colima (Docker runtime)…"
+    colima start || { err "colima start failed"; return 1; }
+    printf "  %-22s" "waiting for docker"
+    local waited=0
+    until docker info &>/dev/null; do
+      if [ "$waited" -ge 60 ]; then echo -e " ${RED}timed out${NC}"; err "Docker still not ready"; return 1; fi
+      printf "${CYAN}.${NC}"; sleep 2; waited=$((waited + 2))
+    done
+    echo -e " ${GREEN}ready${NC}"
+    ok "Colima + Docker ready"
+  else
+    err "Docker isn't running and Colima isn't installed. Start Docker manually, then retry."
+    return 1
   fi
 }

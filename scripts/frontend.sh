@@ -16,6 +16,7 @@ install_deps() {
 
 start() {
   if pid_alive "$PIDF"; then warn "frontend already running (pid $(cat "$PIDF"))"; return 0; fi
+  ensure_docker || exit 1   # ensures the runtime is up (no-op if already running)
   install_deps
   log "Starting marketing (:$MARKETING_PORT) + dashboard (:$DASHBOARD_PORT)…"
   ( cd "$ROOT_DIR" && NEXT_PUBLIC_API_BASE="http://localhost:$BACKEND_PORT" \
