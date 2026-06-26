@@ -61,7 +61,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
         </nav>
         <div className="space-y-3 border-t border-border p-3">
           <div className="flex items-center justify-between px-1">
-            <NotificationBell /><LanguageSwitcher /><ThemeToggle />
+            <LanguageSwitcher /><ThemeToggle />
           </div>
           {me?.email && <div className="truncate px-1 text-xs text-muted-foreground" title={me.email}>{me.email}</div>}
           <button onClick={doLogout}
@@ -86,9 +86,15 @@ function ShellInner({ children }: { children: React.ReactNode }) {
       </header>
 
       {/* content */}
-      <main className="px-4 pb-24 pt-5 sm:px-6 lg:ml-60 lg:px-10 lg:pb-10 lg:pt-8">
-        <div className="mx-auto max-w-5xl">{children}</div>
-      </main>
+      <div className="lg:ml-60">
+        {/* desktop top bar — notifications top-right */}
+        <header className="sticky top-0 z-20 hidden items-center justify-end gap-2 border-b border-border bg-background/70 px-10 py-2.5 backdrop-blur lg:flex">
+          <NotificationBell />
+        </header>
+        <main className="px-4 pb-24 pt-5 sm:px-6 lg:px-10 lg:pb-10 lg:pt-8">
+          <div className="mx-auto max-w-5xl">{children}</div>
+        </main>
+      </div>
 
       {/* mobile bottom tabs */}
       <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-card/90 backdrop-blur lg:hidden">
