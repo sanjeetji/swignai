@@ -25,6 +25,16 @@ router = APIRouter(tags=["picks"])
 DISCLAIMER = "Educational technical screening from real prices — not investment advice."
 
 
+@router.get("/api/universe")
+async def universe():
+    """The tradeable NSE symbols we cover — drives the SEO sitemap + stock pages (blueprint/12).
+    Cheap: returns the configured provider's static watchlist, no market calls."""
+    provider = get_provider(settings.DATA_PROVIDER,
+                            **({"days": 600} if settings.DATA_PROVIDER == "synthetic" else {}))
+    syms = [s[:-3] if s.upper().endswith(".NS") else s for s in provider.get_universe()]
+    return {"symbols": syms, "count": len(syms)}
+
+
 def _load_features(provider):
     index_close = provider.get_index()
     feats = {}
