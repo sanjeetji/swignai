@@ -129,12 +129,29 @@ class AngelOneProvider:
         token = self._token(symbol)
         if not token:
             return pd.DataFrame(columns=OHLCV_COLUMNS)
-        df = self._candles(token, start, end)
+        # Resilient per-symbol fetch: a single transient timeout/error must NOT abort a
+        # ~500-symbol scan — skip this symbol (empty frame) and let the pipeline continue.
+        try:
+            df = self._candles(token, start, end)
+        except Exception as e:  # noqa: BLE001
+            import logging
+            logging.getLogger("angelone").warning("ohlcv fetch failed for %s: %s", symbol, e)
+            df = pd.DataFrame(columns=OHLCV_COLUMNS)
         self._ohlcv_cache[ck] = df
         return df
 
     def get_index(self, start=None, end=None) -> pd.Series:
         end = pd.Timestamp(end) if end else pd.Timestamp.today().normalize()
         start = pd.Timestamp(start) if start else end - pd.Timedelta(days=750)
-        df = self._candles(NIFTY_TOKEN, start, end)
+        # The index is critical (regime gate) — retry a few times on a transient timeout.
+        df = pd.DataFrame(columns=OHLCV_COLUMNS)
+        for attempt in range(3):
+            try:
+                df = self._candles(NIFTY_TOKEN, start, end)
+                if not df.empty:
+                    break
+            except Exception as e:  # noqa: BLE001
+                import logging
+                logging.getLogger("angelone").warning("index fetch attempt %d failed: %s", attempt + 1, e)
+                time.sleep(1.0)
         return df["close"].rename("NIFTY") if not df.empty else pd.Series(dtype=float)
