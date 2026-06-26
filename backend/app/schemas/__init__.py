@@ -67,6 +67,18 @@ class PaperTrailIn(BaseModel):
     new_stop: float          # ratcheted-up stop; must be above the current stop
 
 
+# --- billing ---
+class CreateOrderIn(BaseModel):
+    plan: str                # pro | premium
+
+
+class VerifyPaymentIn(BaseModel):
+    plan: str
+    razorpay_order_id: str
+    razorpay_payment_id: str
+    razorpay_signature: str
+
+
 # --- admin ---
 class AppearanceIn(BaseModel):
     default_theme_mode: str | None = None
