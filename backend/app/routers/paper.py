@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import DEFAULT
 from ..core.db import get_db
+from ..core.flags import require_flag
 from ..core.security import get_current_user
 from ..models.trading import PaperTrade
 from ..models.user import User
@@ -26,7 +27,8 @@ async def _open_trades(db, user_id):
 
 
 @router.post("/buy")
-async def buy(body: PaperBuyIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def buy(body: PaperBuyIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+              _flag=Depends(require_flag("paper_trading"))):
     risk_per_share = body.entry_price - body.stop_loss
     if risk_per_share <= 0:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Stop must be below entry")

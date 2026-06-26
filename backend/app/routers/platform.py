@@ -6,9 +6,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.db import get_db
-from ..models.platform import PlatformSetting, ThemePreset
+from ..models.platform import FeatureFlag, PlatformSetting, ThemePreset
 
 router = APIRouter(tags=["platform"])
+
+
+@router.get("/api/platform/flags")
+async def flags(db: AsyncSession = Depends(get_db)):
+    """Public map of enabled feature flags — drives client-side feature gating (blueprint/16)."""
+    rows = (await db.execute(select(FeatureFlag).where(FeatureFlag.enabled == True))).scalars().all()  # noqa: E712
+    return {"flags": {f.key: True for f in rows}}
 
 
 @router.get("/api/platform/appearance")

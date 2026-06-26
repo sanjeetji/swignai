@@ -12,7 +12,7 @@ from sqlalchemy import func, select
 from .core.db import SessionLocal
 from .core.security import hash_password
 from .models.cms import CmsPage, CmsSection, StatMetric, Testimonial
-from .models.platform import PlatformSetting, ThemePreset
+from .models.platform import FeatureFlag, PlatformSetting, ThemePreset
 from .models.user import Permission, Role, RolePermission, User, UserRole
 
 PERMISSIONS = [
@@ -85,6 +85,16 @@ async def seed_if_empty() -> None:
             for i, (name, label, light, dark) in enumerate(PRESETS):
                 db.add(ThemePreset(name=name, label=label, tokens_light=light, tokens_dark=dark,
                                    sort_order=i))
+
+        # --- feature flags (admin-togglable; on by default for core Layers) ---
+        if await _empty(db, FeatureFlag):
+            for key, desc in [
+                ("daily_picks", "Show the daily screener picks (Layer 3)"),
+                ("paper_trading", "Paper-trade engine + portfolio (Layer 1/2)"),
+                ("trade_journal", "Trade journal + post-trade review (Layer 2)"),
+                ("ai_explanations", "Hinglish LLM explanations on picks (Layer 3)"),
+            ]:
+                db.add(FeatureFlag(key=key, enabled=True, targeting={}, description=desc))
 
         # --- marketing content (seed, then admin-editable) ---
         if await _empty(db, CmsPage):

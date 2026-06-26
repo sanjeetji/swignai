@@ -8,13 +8,14 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from pydantic import BaseModel
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.db import get_db
 from ..core.security import require_permissions
 from ..models.event import EventLog
-from ..models.platform import Integration, PlatformSetting
+from ..models.platform import FeatureFlag, Integration, PlatformSetting
 from ..models.session import LoginHistory, UserBlock, UserSession
 from ..models.user import User
 from ..schemas import AppearanceIn, IntegrationIn
@@ -261,6 +262,58 @@ async def export_event_logs(category: str | None = None, level: str | None = Non
         content=buf.getvalue(), media_type="text/csv",
         headers={"Content-Disposition": 'attachment; filename="event-logs.csv"'},
     )
+
+
+# ---------------- Feature flags (blueprint/16) ----------------
+class FeatureFlagIn(BaseModel):
+    enabled: bool | None = None
+    targeting: dict | None = None       # {"tiers": [...], "roles": [...]}
+    description: str | None = None
+
+
+@router.get("/feature-flags")
+async def list_flags(_=Depends(require_permissions("feature_flags.manage")),
+                     db: AsyncSession = Depends(get_db)):
+    rows = (await db.execute(select(FeatureFlag).order_by(FeatureFlag.key))).scalars().all()
+    return {"flags": [
+        {"key": f.key, "enabled": f.enabled, "targeting": f.targeting, "description": f.description}
+        for f in rows
+    ]}
+
+
+@router.put("/feature-flags/{key}")
+async def upsert_flag(key: str, body: FeatureFlagIn,
+                      admin=Depends(require_permissions("feature_flags.manage")),
+                      db: AsyncSession = Depends(get_db)):
+    """Create or update a flag (idempotent by key). Audit-logged."""
+    f = (await db.execute(select(FeatureFlag).where(FeatureFlag.key == key))).scalar_one_or_none()
+    created = f is None
+    if f is None:
+        f = FeatureFlag(key=key, enabled=False, targeting={})
+        db.add(f)
+    if body.enabled is not None:
+        f.enabled = body.enabled
+    if body.targeting is not None:
+        f.targeting = body.targeting
+    if body.description is not None:
+        f.description = body.description
+    await ev.admin(db, "feature_flag.upserted", user=admin, resource="feature_flag", resource_id=key,
+                   payload={"created": created, "enabled": f.enabled})
+    await db.commit()
+    return {"key": f.key, "enabled": f.enabled, "targeting": f.targeting, "description": f.description}
+
+
+@router.delete("/feature-flags/{key}")
+async def delete_flag(key: str, admin=Depends(require_permissions("feature_flags.manage")),
+                      db: AsyncSession = Depends(get_db)):
+    f = (await db.execute(select(FeatureFlag).where(FeatureFlag.key == key))).scalar_one_or_none()
+    if not f:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Flag not found")
+    await db.delete(f)
+    await ev.admin(db, "feature_flag.deleted", level="warning", user=admin,
+                   resource="feature_flag", resource_id=key)
+    await db.commit()
+    return {"deleted": key}
 
 
 @router.post("/rerun-pipeline")
