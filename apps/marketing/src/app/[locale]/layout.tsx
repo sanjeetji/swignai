@@ -2,7 +2,7 @@ import "../globals.css";
 import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
-import { ThemeProvider } from "@swingai/ui";
+import { ThemeProvider, TopProgress } from "@swingai/ui";
 import { api } from "@swingai/api-client";
 import { Header } from "../../components/Header";
 import { Footer } from "../../components/Footer";
@@ -37,6 +37,7 @@ export default async function LocaleLayout({
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ThemeProvider presets={appearance?.presets ?? []} defaults={appearance?.defaults}>
+            <TopProgress />
             <Header />
             {children}
             <Footer locale={locale} />

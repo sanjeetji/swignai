@@ -1,7 +1,7 @@
 "use client";
 // Analyze any stock — auth-gated. Leads with a clear swing-trade verdict, then the full
 // deterministic parameter breakdown. Accepts ?symbol= (deep-link from the scanner).
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { CheckCircle2, AlertTriangle, XCircle, Search } from "lucide-react";
@@ -95,5 +95,11 @@ function AnalyzeInner() {
 }
 
 export default function AnalyzePage() {
-  return <DashboardShell><AnalyzeInner /></DashboardShell>;
+  // useSearchParams() must sit under a Suspense boundary (Next.js requirement) — without
+  // it the navigation context can be null and crash with "Cannot read 'useContext'".
+  return (
+    <DashboardShell>
+      <Suspense fallback={null}><AnalyzeInner /></Suspense>
+    </DashboardShell>
+  );
 }

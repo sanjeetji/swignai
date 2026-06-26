@@ -10,6 +10,7 @@ import { useAuth } from "../../../lib/auth";
 import { DashboardShell } from "../../../components/DashboardShell";
 import { RiskCalculator } from "../../../components/RiskCalculator";
 import { RegimeBanner, StatCard, ScoreBar, HeatMeter, Skeleton } from "../../../components/dashboard-ui";
+import { MarketStatus } from "../../../components/MarketStatus";
 
 function DashboardInner() {
   const t = useTranslations();
@@ -56,6 +57,8 @@ function DashboardInner() {
         <h1 className="text-2xl font-bold tracking-tight">{t("dashboard.title")}</h1>
         {me?.name && <p className="text-sm text-muted-foreground">{t("dashboard.welcome", { name: me.name })}</p>}
       </div>
+
+      <MarketStatus />
 
       <RegimeBanner regime={picks?.picks?.[0]?.regime} cashMode={picks?.cash_mode}
         note={picks?.cash_mode ? t("dashboard.cashMode") : undefined} />

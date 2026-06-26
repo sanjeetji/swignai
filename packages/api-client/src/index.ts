@@ -38,21 +38,50 @@ export interface Pick {
 }
 export interface DailyPicks { date: string; regime: string; cash_mode: boolean; picks: Pick[] }
 
+export interface MarketStatus {
+  session: "open" | "pre-open" | "closed";
+  is_open: boolean;
+  regime: "bull" | "neutral" | "bear" | "unknown";
+  trend: "up" | "down" | "flat";
+  index: {
+    symbol: string; level: number | null; ema20: number | null; last_close: number | null;
+    change_pct: number | null; live: boolean; as_of: string | null;
+  };
+  server_time_ist: string;
+  disclaimer: string;
+}
+
 // Default per-request timeout (ms) so a slow/hung backend never freezes SSR — the request
 // aborts and the caller's `.catch(fallback)` kicks in instead of hanging the page forever.
 const REQ_TIMEOUT_MS = 12000;
+
+// Global in-flight counter so a UI progress bar can show whenever the app is talking to the
+// API. Subscribe via onApiActivity; harmless on the server (no subscribers).
+let _inflight = 0;
+const _activitySubs = new Set<(n: number) => void>();
+export function onApiActivity(cb: (n: number) => void): () => void {
+  _activitySubs.add(cb);
+  cb(_inflight);
+  return () => { _activitySubs.delete(cb); };
+}
+function _bump(delta: number) {
+  _inflight = Math.max(0, _inflight + delta);
+  _activitySubs.forEach((cb) => cb(_inflight));
+}
 
 async function req<T>(path: string, init: RequestInit = {}, token?: string): Promise<T> {
   const headers: Record<string, string> = { "Content-Type": "application/json", ...(init.headers as any) };
   if (token) headers["Authorization"] = `Bearer ${token}`;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), REQ_TIMEOUT_MS);
+  _bump(1);
   try {
     const res = await fetch(`${API_BASE}${path}`, { ...init, headers, cache: "no-store", signal: ctrl.signal });
     if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
     return res.json() as Promise<T>;
   } finally {
     clearTimeout(timer);
+    _bump(-1);
   }
 }
 
@@ -61,6 +90,7 @@ export const api = {
   brand: () => req<Brand>("/api/platform/brand"),
   appearance: () => req<Appearance>("/api/platform/appearance"),
   dailyPicks: (limit = 5) => req<DailyPicks>(`/api/daily-picks?limit=${limit}`),
+  marketStatus: () => req<MarketStatus>("/api/market-status"),
   universe: () => req<{ symbols: string[]; count: number }>("/api/universe").catch(() => ({ symbols: [], count: 0 })),
   sectors: () => req<{ sectors: Record<string, string[]>; count: number }>("/api/sectors").catch(() => ({ sectors: {} as Record<string, string[]>, count: 0 })),
   scan: (params?: { min_score?: number; sector?: string; regime_bias?: string }) => {

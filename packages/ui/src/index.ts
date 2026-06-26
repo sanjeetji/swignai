@@ -6,5 +6,6 @@ export { Card } from "./components/card";
 export { KpiStat } from "./components/kpi-stat";
 export { ThemeToggle } from "./components/theme-toggle";
 export { LanguageSwitcher } from "./components/language-switcher";
+export { TopProgress } from "./components/top-progress";
 export { StockAnalysisView } from "./components/stock-analysis";
 export type { StockAnalysisData } from "./components/stock-analysis";

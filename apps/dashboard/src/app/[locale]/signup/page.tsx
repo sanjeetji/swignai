@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -9,6 +9,11 @@ import { useAuth } from "../../../lib/auth";
 import { AuthShell, authInput } from "../../../components/AuthShell";
 
 export default function SignupPage() {
+  // useSearchParams() must be under a Suspense boundary (Next.js requirement).
+  return <Suspense fallback={null}><SignupInner /></Suspense>;
+}
+
+function SignupInner() {
   const t = useTranslations();
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();

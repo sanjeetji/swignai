@@ -28,6 +28,90 @@ router = APIRouter(tags=["picks"])
 
 DISCLAIMER = "Educational technical screening from real prices — not investment advice."
 
+# NSE regular session in IST (Mon–Fri 09:15–15:30; 09:00–09:15 pre-open). Holidays aren't
+# modelled here — a holiday simply shows "closed" with the last available close, which is honest.
+from datetime import datetime, time as _time, timedelta, timezone as _tz  # noqa: E402
+
+_IST = _tz(timedelta(hours=5, minutes=30))
+
+
+def _nse_session(now_ist: datetime) -> str:
+    if now_ist.weekday() >= 5:
+        return "closed"
+    t = now_ist.time()
+    if _time(9, 0) <= t < _time(9, 15):
+        return "pre-open"
+    if _time(9, 15) <= t <= _time(15, 30):
+        return "open"
+    return "closed"
+
+
+async def _live_nifty() -> float | None:
+    """Best-effort latest NIFTY value from the live provider, cached 60s. None on any error."""
+    cached = await cache_get("market:nifty_live")
+    if cached is not None:
+        try:
+            return float(cached)
+        except (TypeError, ValueError):
+            return None
+    try:
+        import asyncio
+        provider = get_provider(settings.DATA_PROVIDER,
+                                **({"days": 30} if settings.DATA_PROVIDER == "synthetic" else {}))
+        series = await asyncio.to_thread(provider.get_index)
+        if series is None or len(series) == 0:
+            return None
+        val = float(series.iloc[-1])
+        await cache_set("market:nifty_live", val, ttl=60)
+        return val
+    except Exception:
+        return None
+
+
+@router.get("/api/market-status")
+async def market_status(db: AsyncSession = Depends(get_db)):
+    """Live-ish market state for the dashboard banner: NSE session (open/pre-open/closed),
+    regime, NIFTY level + trend. When the market is open we try a fresh index value (cached
+    60s); otherwise we show the last available close from the daily pipeline."""
+    now_ist = datetime.now(_IST)
+    session = _nse_session(now_ist)
+    reg = (await db.execute(select(RegimeLog).order_by(desc(RegimeLog.date)).limit(1))).scalar_one_or_none()
+    last_close = float(reg.nifty_close) if reg and reg.nifty_close is not None else None
+    ema20 = float(reg.nifty_ema20) if reg and reg.nifty_ema20 is not None else None
+    regime = (reg.regime if reg else None) or "unknown"
+    as_of = str(reg.date) if reg else None
+
+    live = await _live_nifty() if session in ("open", "pre-open") else None
+    level = live if live is not None else last_close
+    # Trend from the regime gate (the actual signal); fall back to level-vs-EMA20 if regime unknown.
+    if regime == "bull":
+        trend = "up"
+    elif regime == "bear":
+        trend = "down"
+    elif level is not None and ema20 is not None:
+        trend = "up" if level >= ema20 else "down"
+    else:
+        trend = "flat"
+    change_pct = round((level - last_close) / last_close * 100, 2) if (live is not None and last_close) else None
+
+    return {
+        "session": session,                      # open | pre-open | closed
+        "is_open": session == "open",
+        "regime": regime,                        # bull | neutral | bear | unknown
+        "trend": trend,                          # up | down
+        "index": {
+            "symbol": "NIFTY 50",
+            "level": round(level, 2) if level is not None else None,
+            "ema20": round(ema20, 2) if ema20 is not None else None,
+            "last_close": round(last_close, 2) if last_close is not None else None,
+            "change_pct": change_pct,            # vs last close, only when a live value is fresh
+            "live": live is not None,            # true = freshly fetched; false = last close
+            "as_of": as_of,
+        },
+        "server_time_ist": now_ist.strftime("%d %b %Y, %H:%M IST"),
+        "disclaimer": DISCLAIMER,
+    }
+
 
 @router.get("/api/universe")
 async def universe():
