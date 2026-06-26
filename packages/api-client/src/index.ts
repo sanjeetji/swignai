@@ -89,6 +89,8 @@ export const api = {
     req<any>("/api/paper-trade/buy", { method: "POST", body: JSON.stringify(body) }, token),
   paperClose: (token: string, id: string, exit_price: number, exit_reason?: string) =>
     req<any>(`/api/paper-trade/${id}/close`, { method: "POST", body: JSON.stringify({ exit_price, exit_reason }) }, token),
+  paperTrail: (token: string, id: string, new_stop: number) =>
+    req<any>(`/api/paper-trade/${id}/trail`, { method: "POST", body: JSON.stringify({ new_stop }) }, token),
 
   // admin
   adminUsers: (token: string, q = "") => req<any>(`/api/admin/users?q=${encodeURIComponent(q)}`, {}, token),

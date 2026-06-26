@@ -63,6 +63,7 @@ async def stock_analysis(symbol: str):
         "trade_plan": None if plan is None else {
             "entry": plan.entry, "stop": plan.stop, "target_1": plan.target_1,
             "target_2": plan.target_2, "rr_ratio": plan.rr_ratio,
+            "quantity": plan.quantity, "position_size": plan.position_size,
         },
         "disclaimer": "Educational technical analysis computed from real prices — not investment advice. "
                       "Conditions met do not imply future returns.",

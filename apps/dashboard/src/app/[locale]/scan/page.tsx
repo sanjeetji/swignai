@@ -7,8 +7,10 @@ import Link from "next/link";
 import { Radar, ArrowUpRight } from "lucide-react";
 import { api } from "@swingai/api-client";
 import { Card, Button } from "@swingai/ui";
+import { useAuth } from "../../../lib/auth";
 import { DashboardShell } from "../../../components/DashboardShell";
 import { RegimeBanner, Skeleton } from "../../../components/dashboard-ui";
+import { BuyButton } from "../../../components/paper-trade";
 
 const MIN_SCORES = [
   { v: 0, label: "Any score" }, { v: 50, label: "> 50" }, { v: 65, label: "> 65 (solid)" }, { v: 80, label: "> 80 (high conviction)" },
@@ -24,12 +26,18 @@ function trendCls(t: string) {
 
 function ScanInner() {
   const { locale } = useParams<{ locale: string }>();
+  const token = useAuth((s) => s.token);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [minScore, setMinScore] = useState(0);
   const [bias, setBias] = useState("");
   const [sector, setSector] = useState("");
   const [sectors, setSectors] = useState<string[]>([]);
+  const [held, setHeld] = useState<Set<string>>(new Set());
+
+  const loadHeld = useCallback(() => {
+    if (token) api.portfolio(token).then((p) => setHeld(new Set((p.trades || []).map((t: any) => t.symbol)))).catch(() => {});
+  }, [token]);
 
   const run = useCallback(() => {
     setLoading(true);
@@ -39,6 +47,7 @@ function ScanInner() {
 
   useEffect(() => { api.sectors().then((r) => setSectors(Object.keys(r.sectors))).catch(() => {}); }, []);
   useEffect(() => { run(); }, [run]);
+  useEffect(() => { loadHeld(); }, [loadHeld]);
 
   const selCls = "rounded-lg border border-border bg-background px-3 py-2 text-sm";
 
@@ -78,16 +87,17 @@ function ScanInner() {
         <div className="space-y-2">{[0, 1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-12" />)}</div>
       ) : (
         <Card className="overflow-hidden p-0">
-          <div className="hidden grid-cols-[1.4fr_1.2fr_0.9fr_1fr_0.8fr_auto] gap-3 border-b border-border px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:grid">
-            <div>Symbol</div><div>AI score</div><div>Rel strength</div><div>Trend</div><div>Vol ratio</div><div className="text-right">Action</div>
+          <div className="hidden grid-cols-[1.3fr_0.8fr_1.1fr_0.8fr_0.9fr_0.7fr_auto] gap-3 border-b border-border px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:grid">
+            <div>Symbol</div><div>Price</div><div>Quant score</div><div>Rel str</div><div>Trend</div><div>Vol</div><div className="text-right">Action</div>
           </div>
           <div className="divide-y divide-border">
             {data?.results?.map((r: any) => (
-              <div key={r.symbol} className="grid grid-cols-2 items-center gap-3 px-4 py-3 text-sm sm:grid-cols-[1.4fr_1.2fr_0.9fr_1fr_0.8fr_auto]">
+              <div key={r.symbol} className="grid grid-cols-2 items-center gap-3 px-4 py-3 text-sm sm:grid-cols-[1.3fr_0.8fr_1.1fr_0.8fr_0.9fr_0.7fr_auto]">
                 <div>
                   <div className="font-semibold">{r.symbol}</div>
                   <div className="text-xs text-muted-foreground">{r.sector || "—"}</div>
                 </div>
+                <div className="tabular-nums">₹{r.price}</div>
                 <div className="flex items-center gap-2">
                   <span className={`w-8 font-bold tabular-nums ${r.score >= 65 ? "text-success" : r.score < 45 ? "text-destructive" : ""}`}>{r.score}</span>
                   <div className="hidden h-1.5 flex-1 overflow-hidden rounded-full bg-muted sm:block">
@@ -99,9 +109,14 @@ function ScanInner() {
                 </div>
                 <div><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${trendCls(r.trend)}`}>{r.trend}</span></div>
                 <div className="tabular-nums text-muted-foreground">{r.vol_ratio}x</div>
-                <div className="text-right">
+                <div className="flex items-center justify-end gap-2">
+                  {held.has(r.symbol) ? (
+                    <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs text-primary">● Holding</span>
+                  ) : r.plan ? (
+                    <BuyButton symbol={r.symbol} plan={r.plan} token={token} onDone={loadHeld} />
+                  ) : null}
                   <Link href={`/${locale}/analyze?symbol=${r.symbol}`}>
-                    <Button size="sm" variant="ghost">Analyze <ArrowUpRight size={13} className="ml-1" /></Button>
+                    <Button size="sm" variant="ghost"><ArrowUpRight size={14} /></Button>
                   </Link>
                 </div>
               </div>

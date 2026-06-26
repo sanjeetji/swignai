@@ -7,7 +7,9 @@ import { useTranslations } from "next-intl";
 import { CheckCircle2, AlertTriangle, XCircle, Search } from "lucide-react";
 import { api } from "@swingai/api-client";
 import { Card, Button, StockAnalysisView, type StockAnalysisData } from "@swingai/ui";
+import { useAuth } from "../../../lib/auth";
 import { DashboardShell } from "../../../components/DashboardShell";
+import { BuyButton, PositionCard } from "../../../components/paper-trade";
 
 function Verdict({ data }: { data: StockAnalysisData }) {
   const valid = data.swing_screen.meets_all_conditions;
@@ -34,11 +36,17 @@ function Verdict({ data }: { data: StockAnalysisData }) {
 
 function AnalyzeInner() {
   const t = useTranslations();
+  const token = useAuth((s) => s.token);
   const initial = useSearchParams().get("symbol") || "";
   const [symbol, setSymbol] = useState(initial || "HAL");
   const [data, setData] = useState<StockAnalysisData | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [portfolio, setPortfolio] = useState<any>(null);
+
+  const loadPortfolio = useCallback(() => {
+    if (token) api.portfolio(token).then(setPortfolio).catch(() => {});
+  }, [token]);
 
   const run = useCallback(async (sym: string) => {
     if (!sym.trim()) return;
@@ -50,6 +58,9 @@ function AnalyzeInner() {
 
   // deep-link: auto-run when arriving with ?symbol=
   useEffect(() => { if (initial) run(initial); }, [initial, run]);
+  useEffect(() => { loadPortfolio(); }, [loadPortfolio]);
+
+  const held = data && portfolio?.trades?.find((p: any) => p.symbol === data.symbol);
 
   return (
     <div className="space-y-6">
@@ -63,6 +74,19 @@ function AnalyzeInner() {
       {data && (
         <div className="space-y-6">
           <Verdict data={data} />
+          {held ? (
+            <PositionCard pos={held} token={token} onChange={loadPortfolio} />
+          ) : data.trade_plan ? (
+            <Card className="flex flex-wrap items-center justify-between gap-3 p-5">
+              <div className="text-sm">
+                <div className="font-semibold">Trade this setup on paper</div>
+                <div className="text-muted-foreground">
+                  Entry ₹{data.trade_plan.entry} · Stop ₹{data.trade_plan.stop} · T1 ₹{data.trade_plan.target_1} · R:R {data.trade_plan.rr_ratio}
+                </div>
+              </div>
+              <BuyButton symbol={data.symbol} plan={data.trade_plan} token={token} onDone={loadPortfolio} size="default" />
+            </Card>
+          ) : null}
           <StockAnalysisView data={data} />
         </div>
       )}
