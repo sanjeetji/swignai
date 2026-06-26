@@ -52,7 +52,7 @@ export const api = {
   appearance: () => req<Appearance>("/api/platform/appearance"),
   dailyPicks: (limit = 5) => req<DailyPicks>(`/api/daily-picks?limit=${limit}`),
   universe: () => req<{ symbols: string[]; count: number }>("/api/universe").catch(() => ({ symbols: [], count: 0 })),
-  sectors: () => req<{ sectors: Record<string, string[]>; count: number }>("/api/sectors").catch(() => ({ sectors: {}, count: 0 })),
+  sectors: () => req<{ sectors: Record<string, string[]>; count: number }>("/api/sectors").catch(() => ({ sectors: {} as Record<string, string[]>, count: 0 })),
   cmsPage: (slug: string, locale = "en") => req<any>(`/api/cms/page/${slug}?locale=${locale}`),
   stockAnalysis: (symbol: string) => req<any>(`/api/stocks/${encodeURIComponent(symbol)}`),
   testimonials: (locale = "en") => req<any>(`/api/cms/testimonials?locale=${locale}`),

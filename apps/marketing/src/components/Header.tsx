@@ -12,10 +12,15 @@ export function Header() {
   const t = useTranslations();
   const { locale } = useParams<{ locale: string }>();
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-background/80 px-6 py-3 backdrop-blur">
-      <a href={`/${locale}`} className="text-lg font-bold">{t("brand.name")}</a>
+    <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-background/70 px-4 py-3 backdrop-blur-md sm:px-6">
+      <a href={`/${locale}`} className="flex items-center gap-2">
+        <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary font-bold text-primary-foreground shadow-sm shadow-primary/30">S</span>
+        <span className="text-lg font-bold tracking-tight">{t("brand.name")}</span>
+      </a>
       <div className="flex items-center gap-2">
-        <a href={`/${locale}/track-record`} className="hidden px-2 text-sm text-muted-foreground hover:underline sm:inline">
+        <a href={`/${locale}/stocks`} className="hidden px-2 text-sm text-muted-foreground transition-colors hover:text-foreground md:inline">Stocks</a>
+        <a href={`/${locale}/sectors`} className="hidden px-2 text-sm text-muted-foreground transition-colors hover:text-foreground md:inline">Sectors</a>
+        <a href={`/${locale}/track-record`} className="hidden px-2 text-sm text-muted-foreground transition-colors hover:text-foreground sm:inline">
           {t("nav.trackRecord")}
         </a>
         <LanguageSwitcher />
