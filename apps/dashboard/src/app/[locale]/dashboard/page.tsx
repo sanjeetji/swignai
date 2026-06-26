@@ -21,10 +21,29 @@ function DashboardInner() {
   const [analytics, setAnalytics] = useState<any>(null);
   const [tradeMsg, setTradeMsg] = useState<{ symbol: string; ok: boolean; text: string } | null>(null);
   const [tradingSym, setTradingSym] = useState<string | null>(null);
+  const [fetchingData, setFetchingData] = useState(false);
 
   const refresh = useCallback((tok: string) => {
     api.portfolio(tok).then(setPortfolio).catch(() => {});
     api.analytics(tok).then(setAnalytics).catch(() => {});
+  }, []);
+
+  // Load picks; if the DB is empty (first run / after `fresh`), kick off the screener pipeline
+  // and poll until today's picks land — the server keeps running even if the trigger request
+  // exceeds the client timeout. The top progress bar shows throughout (each call is in-flight).
+  const loadPicks = useCallback(async (tok: string) => {
+    let p = await api.dailyPicks().catch(() => null);
+    if (p) setPicks(p);
+    if (tok && (!p || !p.picks || p.picks.length === 0)) {
+      setFetchingData(true);
+      api.refreshPicks(tok).catch(() => {});          // fire; may exceed client timeout (server continues)
+      for (let i = 0; i < 16; i++) {
+        await new Promise((r) => setTimeout(r, 2500));
+        const np = await api.dailyPicks().catch(() => null);
+        if (np && np.picks && np.picks.length > 0) { setPicks(np); break; }
+      }
+      setFetchingData(false);
+    }
   }, []);
 
   async function paperTrade(p: any) {
@@ -45,9 +64,9 @@ function DashboardInner() {
   useEffect(() => {
     if (!token) return;
     api.me(token).then(setMe).catch(() => {});
-    api.dailyPicks().then(setPicks).catch(() => {});
+    loadPicks(token);
     refresh(token);
-  }, [token, refresh]);
+  }, [token, refresh, loadPicks]);
 
   const hasTrades = analytics?.trades > 0;
 
@@ -59,6 +78,16 @@ function DashboardInner() {
       </div>
 
       <MarketStatus />
+
+      {fetchingData && (
+        <div className="flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+          <div>
+            <div className="text-sm font-medium">Fetching today's market data…</div>
+            <div className="text-xs text-muted-foreground">Running the screener on live NSE prices — this takes a few seconds on first load.</div>
+          </div>
+        </div>
+      )}
 
       <RegimeBanner regime={picks?.picks?.[0]?.regime} cashMode={picks?.cash_mode}
         note={picks?.cash_mode ? t("dashboard.cashMode") : undefined} />

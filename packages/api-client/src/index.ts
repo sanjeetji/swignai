@@ -91,6 +91,9 @@ export const api = {
   appearance: () => req<Appearance>("/api/platform/appearance"),
   dailyPicks: (limit = 5) => req<DailyPicks>(`/api/daily-picks?limit=${limit}`),
   marketStatus: () => req<MarketStatus>("/api/market-status"),
+  refreshPicks: (token: string, force = false) =>
+    req<{ ran: boolean; reason?: string; regime?: string; count?: number }>(
+      `/api/daily-picks/refresh?force=${force}`, { method: "POST" }, token),
   universe: () => req<{ symbols: string[]; count: number }>("/api/universe").catch(() => ({ symbols: [], count: 0 })),
   sectors: () => req<{ sectors: Record<string, string[]>; count: number }>("/api/sectors").catch(() => ({ sectors: {} as Record<string, string[]>, count: 0 })),
   scan: (params?: { min_score?: number; sector?: string; regime_bias?: string }) => {

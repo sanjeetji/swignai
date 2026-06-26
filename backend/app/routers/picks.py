@@ -10,13 +10,14 @@ from __future__ import annotations
 import json
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import desc, select
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import DEFAULT
 from ..core.config import settings
 from ..core.db import get_db
 from ..core.redis import cache_get, cache_set
+from ..core.security import get_current_user
 from ..data.factory import get_provider
 from ..data.sectors import sector_for
 from ..llm import generate_explanation
@@ -111,6 +112,38 @@ async def market_status(db: AsyncSession = Depends(get_db)):
         "server_time_ist": now_ist.strftime("%d %b %Y, %H:%M IST"),
         "disclaimer": DISCLAIMER,
     }
+
+
+# Simple in-process guard so concurrent dashboard opens don't run the pipeline twice.
+_refresh_in_progress = False
+
+
+@router.post("/api/daily-picks/refresh")
+async def refresh_daily_picks(force: bool = Query(False),
+                              user=Depends(get_current_user),
+                              db: AsyncSession = Depends(get_db)):
+    """Populate today's picks by running the screener pipeline. Idempotent + freshness-gated:
+    a no-op when the DB already holds today's picks (so it's safe for the dashboard to call on
+    first open after a fresh install). `force=true` re-runs regardless. Auth-required."""
+    global _refresh_in_progress
+    # `date_generated` is the latest TRADING day (may be < today on weekends/holidays), so we
+    # gate on "any picks exist" rather than "== today" — this endpoint exists to populate an
+    # EMPTY db (first run / after `fresh`). Daily freshness is the scheduler's / `force`'s job.
+    latest = (await db.execute(select(func.max(AIPick.date_generated)))).scalar()
+    if latest is not None and not force:
+        return {"ran": False, "reason": "up_to_date", "date": str(latest)}
+    if _refresh_in_progress:
+        return {"ran": False, "reason": "in_progress"}
+    _refresh_in_progress = True
+    try:
+        from ..jobs.daily_pipeline import run
+        r = await run()
+        return {"ran": True, "regime": r.get("regime"), "count": len(r.get("picks", [])),
+                "date": str(datetime.now(_IST).date())}
+    except Exception as e:
+        return {"ran": False, "reason": "error", "detail": str(e)[:200]}
+    finally:
+        _refresh_in_progress = False
 
 
 @router.get("/api/universe")
