@@ -1,5 +1,5 @@
 """SQLAlchemy models (blueprint/06). Importing this package registers all tables."""
-from .user import User, Role, Permission, UserRole, RolePermission  # noqa: F401
+from .user import User, Role, Permission, UserRole, RolePermission, PasswordResetToken  # noqa: F401
 from .platform import (  # noqa: F401
     PlatformSetting, ThemePreset, UserPreference, FeatureFlag, Integration,
 )

@@ -45,6 +45,19 @@ def create_access_token(sub: str, extra: dict | None = None) -> str:
     return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALG)
 
 
+def create_refresh_token(sub: str, sid: str) -> str:
+    """Long-lived token bound to a session (sid). Exchanged at /api/auth/refresh."""
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": sub,
+        "sid": sid,
+        "iat": now,
+        "exp": now + timedelta(days=settings.REFRESH_TOKEN_TTL_DAYS),
+        "type": "refresh",
+    }
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALG)
+
+
 def decode_token(token: str) -> dict:
     return jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALG])
 
@@ -64,6 +77,9 @@ async def get_current_user(
         user_id = payload.get("sub")
     except JWTError:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid token")
+
+    if payload.get("type") not in (None, "access"):   # refresh tokens can't access routes
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid token type")
 
     user = await db.get(User, uuid.UUID(user_id)) if user_id else None
     if user is None:
