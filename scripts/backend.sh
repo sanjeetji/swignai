@@ -14,7 +14,13 @@ start() {
   ( cd "$BACKEND_DIR" && DATABASE_URL="$DATABASE_URL" REDIS_URL="$REDIS_URL" \
       nohup "$VENV_DIR/bin/uvicorn" app.main:app --host 0.0.0.0 --port "$BACKEND_PORT" \
       >>"$LOGF" 2>&1 & echo $! >"$PIDF" )
-  wait_for_port "$BACKEND_PORT" "backend :$BACKEND_PORT" 40
+  # If the port never opens, the process almost certainly crashed on boot — surface why.
+  if ! wait_for_port "$BACKEND_PORT" "backend :$BACKEND_PORT" 40; then
+    err "backend did not come up (likely a startup crash). Recent log:"
+    tail_log "$LOGF" 30
+    rm -f "$PIDF"
+    return 1
+  fi
   ok "backend up → http://localhost:$BACKEND_PORT/docs"
 }
 

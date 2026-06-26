@@ -58,6 +58,28 @@ port_listening() { lsof -i ":$1" -sTCP:LISTEN -P -n &>/dev/null; }
 
 pid_alive() { [ -f "$1" ] && kill -0 "$(cat "$1")" 2>/dev/null; }
 
+# HTTP check — 0 if the URL answers (2xx/3xx) within the timeout. Used for real health probes.
+http_ok() { curl -sf -o /dev/null --max-time "${2:-4}" "$1" 2>/dev/null; }
+
+# Print the last N lines of a log under a labelled header — used to SURFACE a crash reason
+# right in the terminal when a service fails to come up (so you don't have to hunt the log).
+tail_log() {  # $1=file  $2=lines(default 30)
+  local f="$1" n="${2:-30}"
+  [ -f "$f" ] || { warn "no log file at $f yet"; return 0; }
+  echo -e "${YELLOW}┄┄ last $n lines · $(basename "$f") ┄┄${NC}" >&2
+  tail -n "$n" "$f" >&2
+  echo -e "${YELLOW}┄┄ (full log: $f) ┄┄${NC}" >&2
+}
+
+# Best-effort scan of a log's tail for error-ish lines (empty output = looks clean).
+recent_errors() {  # $1=file  $2=lines-to-scan(default 250)
+  local f="$1" scan="${2:-250}"
+  [ -f "$f" ] || return 0
+  tail -n "$scan" "$f" 2>/dev/null \
+    | grep -iE "traceback|exception|error|✗|fatal|address already in use|cannot find module" \
+    | grep -viE "0 errors|error_|errorMessage|GET /|POST /" | tail -n 4
+}
+
 ensure_venv() {
   if [ ! -x "$PY" ]; then
     log "Creating Python venv + installing backend deps (first run)…"

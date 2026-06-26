@@ -25,13 +25,23 @@ Override any port inline, e.g. `BACKEND_PORT=9100 scripts/backend.sh start`.
 
 | Command | What it does |
 |---|---|
-| `scripts/swingai.sh start` | Start everything: DB + Redis (Docker) → backend → frontend. Prints all URLs. |
+| `scripts/swingai.sh start` | Start everything: DB + Redis (Docker) → backend → frontend (background). Ends with a **health report** + URLs. |
+| `scripts/swingai.sh start --logs` | Same, but then **stays attached and streams logs** so you see crashes live. `Ctrl-C` stops watching; services keep running. (`-w` / `--watch` also work.) |
+| `scripts/swingai.sh dev` | Alias for `start --logs`. |
 | `scripts/swingai.sh stop` | Stop frontend + backend + DB containers. **Data preserved** (volumes kept). |
-| `scripts/swingai.sh restart` | `stop` then `start`. |
-| `scripts/swingai.sh status` | Show containers, backend/frontend processes, and a ● / ○ port table. |
-| `scripts/swingai.sh fresh` | **DESTRUCTIVE** — drop the DB volume, then start fresh (re-seeds). |
-| `scripts/swingai.sh logs` | Tail backend + frontend logs together. |
+| `scripts/swingai.sh restart [--logs]` | `stop` then `start` (optionally attach to logs). |
+| `scripts/swingai.sh status` / `health` | **Health probe**: ● / ○ for every port, the API `/api/health` response, and recent error lines from the logs. Safe to run anytime. |
+| `scripts/swingai.sh fresh [--logs]` | **DESTRUCTIVE** — drop the DB volume, start fresh, create the first super admin (asks `y/n` first). Market data auto-fetches on first dashboard open. |
+| `scripts/swingai.sh create-admin` | Create / promote a super admin (interactive, or `--email/--name/--password`). |
+| `scripts/swingai.sh pipeline` | (Re)run the daily screener now to refresh market data / picks. |
+| `scripts/swingai.sh logs [N]` | Tail backend + frontend (live follow; or pass `N` for the last N lines then exit). |
 | `scripts/swingai.sh test` | Run the backend test suite. |
+
+> **Crash visibility:** `start`/`fresh` launch services in the background and return — so a later
+> crash won't show in your terminal. Use **`status`** (anytime) for a health snapshot, **`logs`** to
+> tail, or **`start --logs` / `dev`** to watch live from the moment of launch. If a service fails to
+> come up *during* start, the script now automatically prints the last ~30 lines of its log so you
+> see the cause immediately.
 
 ---
 
@@ -53,7 +63,7 @@ Override any port inline, e.g. `BACKEND_PORT=9100 scripts/backend.sh start`.
 
 | Command | What it does |
 |---|---|
-| `scripts/backend.sh start` | Create venv + install deps (first run), then run uvicorn on :9000 (background). |
+| `scripts/backend.sh start` | Create venv + install deps (first run), then run uvicorn on :9000 (background). If it fails to bind the port, it prints the last ~30 log lines so you see the crash. |
 | `scripts/backend.sh stop` | Stop the uvicorn process. |
 | `scripts/backend.sh restart` | `stop` then `start`. |
 | `scripts/backend.sh status` | Is the backend process alive? |
@@ -69,7 +79,7 @@ Override any port inline, e.g. `BACKEND_PORT=9100 scripts/backend.sh start`.
 
 | Command | What it does |
 |---|---|
-| `scripts/frontend.sh start` | `npm install` (first run), then `npm run dev` (both apps, background). |
+| `scripts/frontend.sh start` | `npm install` (first run), clears stale `.next`, then `npm run dev` (both apps, background). If an app fails to come up, it prints the last ~30 log lines. |
 | `scripts/frontend.sh stop` | Stop the dev servers + free ports 9001/9002. |
 | `scripts/frontend.sh restart` | `stop` then `start`. |
 | `scripts/frontend.sh install` | Install JS deps only (no run). |
@@ -78,15 +88,23 @@ Override any port inline, e.g. `BACKEND_PORT=9100 scripts/backend.sh start`.
 
 ---
 
-## 📜 `logs.sh` — tail logs
+## 📜 `logs.sh` — view logs
+
+Pass an optional **line count** as a 2nd argument to get a **snapshot** (prints the last N lines
+and exits — the prompt returns immediately) instead of a live follow.
 
 | Command | What it does |
 |---|---|
-| `scripts/logs.sh all` | Tail backend + frontend together (default). |
-| `scripts/logs.sh backend` | Tail `logs/backend.log`. |
-| `scripts/logs.sh frontend` | Tail `logs/frontend.log`. |
-| `scripts/logs.sh db` | Follow Postgres container logs. |
-| `scripts/logs.sh redis` | Follow Redis container logs. |
+| `scripts/logs.sh all` | **Live follow** backend + frontend together (default). `Ctrl-C` to stop. |
+| `scripts/logs.sh all 50` | Snapshot: last 50 lines of each, then exit. |
+| `scripts/logs.sh backend [N]` | Follow `logs/backend.log` (or last N lines then exit). |
+| `scripts/logs.sh frontend [N]` | Follow `logs/frontend.log` (or last N lines then exit). |
+| `scripts/logs.sh db [N]` | Follow Postgres container logs (or last N then exit). |
+| `scripts/logs.sh redis [N]` | Follow Redis container logs (or last N then exit). |
+
+> **Follow vs snapshot:** a live follow (`tail -f`) *stays attached on purpose* — that's how you
+> watch logs in real time; press `Ctrl-C` to return to the prompt. Add a number when you just want
+> a quick peek without blocking.
 
 ---
 
@@ -102,12 +120,30 @@ Override any port inline, e.g. `BACKEND_PORT=9100 scripts/backend.sh start`.
 ## Typical day
 
 ```bash
-colima start                 # docker runtime
-scripts/swingai.sh start     # bring up the whole platform
-scripts/swingai.sh status    # check ports
-scripts/logs.sh all          # watch logs
-# ... work ...
-scripts/swingai.sh stop      # done
+scripts/swingai.sh start --logs   # bring up everything AND watch logs live (see crashes)
+#   (Colima/Docker auto-starts if needed; Ctrl-C stops watching, services keep running)
+
+# or, if you prefer the prompt back:
+scripts/swingai.sh start          # background; ends with a health report
+scripts/swingai.sh status         # health snapshot anytime (ports + /health + recent errors)
+scripts/logs.sh all 80            # quick peek at the last 80 log lines (no blocking)
+scripts/logs.sh all               # live follow when you want to watch
+
+scripts/swingai.sh stop           # done (data preserved)
+```
+
+**First run / reset:**
+```bash
+scripts/swingai.sh fresh          # wipes DB → starts → asks to create the first super admin
+#   then open the dashboard — it auto-fetches today's market data with a progress bar
+scripts/swingai.sh pipeline       # (optional) force a market-data refresh from the CLI
+```
+
+**Did something crash?**
+```bash
+scripts/swingai.sh status         # is anything ○ DOWN? shows recent error lines too
+scripts/logs.sh backend 100       # last 100 backend lines
+scripts/swingai.sh restart        # bounce everything
 ```
 
 **Runtime artifacts** (git-ignored): PIDs in `.run/`, logs in `logs/`.

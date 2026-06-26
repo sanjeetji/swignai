@@ -33,8 +33,14 @@ start() {
       NEXT_PUBLIC_SITE_URL="http://localhost:$MARKETING_PORT" \
       REVALIDATE_TOKEN="${REVALIDATE_TOKEN:-dev-revalidate-token-change-me}" \
       nohup npm run dev >>"$LOGF" 2>&1 & echo $! >"$PIDF" )
-  wait_for_port "$DASHBOARD_PORT" "dashboard :$DASHBOARD_PORT" 120 || true
-  wait_for_port "$MARKETING_PORT" "marketing :$MARKETING_PORT" 60 || true
+  local fe_ok=1
+  wait_for_port "$DASHBOARD_PORT" "dashboard :$DASHBOARD_PORT" 120 || fe_ok=0
+  wait_for_port "$MARKETING_PORT" "marketing :$MARKETING_PORT" 60 || fe_ok=0
+  if [ "$fe_ok" = 0 ]; then
+    err "a frontend app did not come up (likely a compile/startup error). Recent log:"
+    tail_log "$LOGF" 30
+    return 1
+  fi
   ok "frontend up → http://localhost:$MARKETING_PORT (marketing) · :$DASHBOARD_PORT (dashboard)"
 }
 

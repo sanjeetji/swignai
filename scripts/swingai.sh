@@ -1,15 +1,20 @@
 #!/usr/bin/env bash
 # ════════════════════════════════════════════════════════════════
 #  SwingAI — Master Control
-#  Usage: scripts/swingai.sh [start|stop|restart|status|fresh|create-admin|logs|test]
-#    start         db + backend + frontend
-#    stop          stop everything (data preserved)
-#    fresh         WIPE the DB + start + create the first super admin (asks y/n first)
-#    create-admin  create / promote a super admin (interactive, or pass --email/--name/--password)
-#    pipeline      (re)run the daily screener now to refresh market data / picks
-#    status        show what's running
-#    logs          tail backend + frontend
-#    test          run backend test suite
+#  Usage: scripts/swingai.sh <command>
+#    start [--logs] db + backend + frontend (services run in the background).
+#                   --logs (or -w) keeps the terminal attached and streams logs after start,
+#                   so you SEE crashes live (Ctrl-C stops watching; services keep running).
+#    dev            alias for `start --logs` (start, then watch logs in the foreground).
+#    stop           stop everything (data preserved).
+#    restart        stop then start.
+#    status         health check: ports + API /health + recent errors from the logs.
+#    health         same as status (quick health probe; safe to run anytime).
+#    fresh [--logs] WIPE the DB + start + create the first super admin (asks y/n first).
+#    create-admin   create / promote a super admin (interactive, or --email/--name/--password).
+#    pipeline       (re)run the daily screener now to refresh market data / picks.
+#    logs [N]       tail backend + frontend (N = last N lines then exit; no N = live follow).
+#    test           run the backend test suite.
 # ════════════════════════════════════════════════════════════════
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_common.sh"
 
@@ -49,23 +54,54 @@ PY
   ) 2>&1 | grep -vE "smartConnect|INFO:|WARNING:" || true
 }
 
+# Real health probe: each port up/down, the API /health response, and a peek at recent
+# error lines in the logs. Returns non-zero if anything core is down.
+health_summary() {
+  local down=0
+  echo -e "${BOLD}Health${NC}"
+  for pl in "Postgres:$DB_PORT" "Redis:$REDIS_PORT" "API:$BACKEND_PORT" "Dashboard:$DASHBOARD_PORT" "Marketing:$MARKETING_PORT"; do
+    local name="${pl%%:*}" port="${pl##*:}"
+    if port_listening "$port"; then echo -e "  ${GREEN}●${NC} $name (:$port)"
+    else echo -e "  ${RED}○${NC} $name (:$port) — ${RED}DOWN${NC}"; down=1; fi
+  done
+  if http_ok "http://localhost:$BACKEND_PORT/api/health"; then
+    echo -e "  ${GREEN}●${NC} API /api/health responding"
+  else
+    echo -e "  ${RED}○${NC} API /api/health not responding"; down=1
+  fi
+  local be fe
+  be="$(recent_errors "$LOG_DIR/backend.log")"; fe="$(recent_errors "$LOG_DIR/frontend.log")"
+  if [ -n "$be" ]; then echo -e "  ${YELLOW}recent backend errors:${NC}"; echo "$be" | sed 's/^/    /'; fi
+  if [ -n "$fe" ]; then echo -e "  ${YELLOW}recent frontend errors:${NC}"; echo "$fe" | sed 's/^/    /'; fi
+  [ "$down" = 0 ] && echo -e "  ${GREEN}all services healthy${NC}"
+  return "$down"
+}
+
+# $1 = "watch" to attach + stream logs after a successful start.
 start_all() {
+  local watch="${1:-}"
   banner
   ensure_docker || exit 1
-  bash "$SCRIPT_DIR/db.sh" start
-  bash "$SCRIPT_DIR/backend.sh" start
-  bash "$SCRIPT_DIR/frontend.sh" start
+  bash "$SCRIPT_DIR/db.sh" start || { err "database failed to start — aborting."; exit 1; }
+  local trouble=0
+  bash "$SCRIPT_DIR/backend.sh" start  || { warn "backend reported a problem (see its log above)"; trouble=1; }
+  bash "$SCRIPT_DIR/frontend.sh" start || { warn "frontend reported a problem (see its log above)"; trouble=1; }
   # Market data is populated on demand: the dashboard auto-fetches it (with a progress bar)
-  # on first open when the DB is empty (e.g. after `fresh`). Force a refresh anytime with:
-  #   scripts/swingai.sh pipeline
+  # on first open when the DB is empty (e.g. after `fresh`). Refresh anytime: swingai.sh pipeline
   echo
-  ok "SwingAI is up:"
+  health_summary || trouble=1
+  echo
+  if [ "$trouble" = 0 ]; then ok "SwingAI is up:"; else warn "SwingAI started with issues — check the health report above + the logs:"; fi
   echo -e "   Marketing   → ${BOLD}http://localhost:$MARKETING_PORT${NC}"
   echo -e "   Dashboard   → ${BOLD}http://localhost:$DASHBOARD_PORT${NC}"
   echo -e "   API docs    → ${BOLD}http://localhost:$BACKEND_PORT/docs${NC}"
-  echo -e "   Logs        → ${BOLD}scripts/logs.sh all${NC}"
+  echo -e "   Watch logs  → ${BOLD}scripts/swingai.sh logs${NC}   (or start with --logs)"
   if ! ( cd "$BACKEND_DIR" && DATABASE_URL="$DATABASE_URL" "$PY" -m app.admin_setup --check >/dev/null 2>&1 ); then
     warn "No super admin yet — run:  ${BOLD}scripts/swingai.sh create-admin${NC}"
+  fi
+  if [ "$watch" = "watch" ]; then
+    echo; log "Attaching to logs (Ctrl-C to stop watching — services keep running)…"
+    exec bash "$SCRIPT_DIR/logs.sh" all
   fi
 }
 
@@ -84,24 +120,15 @@ stop_all() {
   ok "all stopped"
 }
 
-status_all() {
-  banner
-  echo -e "${BOLD}Containers${NC}"; bash "$SCRIPT_DIR/db.sh" status || true
-  echo -e "\n${BOLD}Processes${NC}"
-  bash "$SCRIPT_DIR/backend.sh" status
-  bash "$SCRIPT_DIR/frontend.sh" status
-  echo -e "\n${BOLD}Ports${NC}"
-  for pl in "DB:$DB_PORT" "Redis:$REDIS_PORT" "API:$BACKEND_PORT" "Dashboard:$DASHBOARD_PORT" "Marketing:$MARKETING_PORT"; do
-    name="${pl%%:*}"; port="${pl##*:}"
-    if port_listening "$port"; then echo -e "  ${GREEN}●${NC} $name ($port)"; else echo -e "  ${RED}○${NC} $name ($port)"; fi
-  done
-}
+# True if the 2nd CLI arg asks to attach to logs after starting.
+wants_watch() { case "${1:-}" in --logs|-w|--watch) return 0 ;; *) return 1 ;; esac; }
 
 case "${1:-help}" in
-  start)   start_all ;;
+  start)   if wants_watch "${2:-}"; then start_all watch; else start_all; fi ;;
+  dev)     start_all watch ;;                       # start + attach to logs (see crashes live)
   stop)    stop_all ;;
-  restart) stop_all; start_all ;;
-  status)  status_all ;;
+  restart) stop_all; if wants_watch "${2:-}"; then start_all watch; else start_all; fi ;;
+  status|health) banner; health_summary || true ;;
   fresh)
     banner
     err "DESTRUCTIVE: this WIPES the database — all users, trades, plans, settings — and recreates it."
@@ -111,13 +138,17 @@ case "${1:-help}" in
     ensure_docker || exit 1
     dc down -v >/dev/null 2>&1 || true
     ok "database wiped"
-    start_all
+    start_all                                   # starts + creates tables/seeds (no watch yet)
     echo; log "Database is fresh — now create your first super admin:"
-    create_admin ;;
+    create_admin                                # needs the tables that start_all just created
+    if wants_watch "${2:-}"; then
+      echo; log "Attaching to logs (Ctrl-C to stop watching — services keep running)…"
+      exec bash "$SCRIPT_DIR/logs.sh" all
+    fi ;;
   create-admin) create_admin "${@:2}" ;;
   pipeline) ensure_docker || exit 1; bash "$SCRIPT_DIR/db.sh" start >/dev/null 2>&1 || true
             log "Refreshing market data (daily pipeline)…"; ensure_market_data force ;;
-  logs)    bash "$SCRIPT_DIR/logs.sh" all ;;
+  logs)    bash "$SCRIPT_DIR/logs.sh" all "${2:-}" ;;
   test)    bash "$SCRIPT_DIR/backend.sh" test ;;
-  *) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *) sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//' ;;
 esac
