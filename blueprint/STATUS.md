@@ -7,7 +7,7 @@
 - **Maturity tiers:** `① Basic` → `② Mid` → `③ Advanced` → `🏆 Best-in-class`
 - **Target for every feature: 🏆 Best-in-class.**
 
-_Last updated: 2026-06-24 · Phase 0 (validation) harness built & green (23 tests)._
+_Last updated: 2026-06-26 · Phase 0 (validation) COMPLETE — walk-forward done, edge not proven; honest educational positioning validated. Platform (Phases 1–3 build) functional._
 
 ---
 
@@ -15,7 +15,7 @@ _Last updated: 2026-06-24 · Phase 0 (validation) harness built & green (23 test
 
 | Phase | Goal | Status |
 |---|---|---|
-| **0 — Validation** | Prove the trading edge (backtest) | 🔴 **EDGE NOT PROVEN** — real-data backtest run; the strategy as-configured has NEGATIVE expectancy (see Phase-0 result below). Harness ✅ works; **strategy needs rework before scaling** |
+| **0 — Validation** | Prove the trading edge (backtest) | ✅ **COMPLETE — edge NOT proven.** Real-data backtest + **walk-forward (3×5y windows)** done: no robust out-of-sample edge (profitable only in trending years, loses in choppy 2024–26). Validated the **honest educational/discipline positioning**, NOT "winning picks" (see Phase-0 result below). Harness ✅. |
 | **1 — MVP** | Survival+process, platform plane, marketing | 🛠️ **In progress** — backend spine ✅ booting (23 endpoints); frontend monorepo + both apps scaffolded; feature depth in progress |
 | **2 — Beta** | Retention, alerts, SEO, analytics | 📝 Spec |
 | **3 — Business** | Subscriptions, scale, Android, RA license | 📝 Spec |
@@ -85,7 +85,17 @@ Ran `app.cli backtest --days 600` on **real NSE data via yfinance** (~20 large-c
 
 **Out-of-sample study (2026-06-25):** ran 6 principled variants (wider stops, longer hold, concentrate, tighter entry, combos) on ~4y real data with a **train/test split (60/40)**. Result: **every variant is POSITIVE in-sample (train +0.22…+0.37R) but NEGATIVE out-of-sample (test −0.03…−0.17R).** That train-positive/test-negative pattern is the classic **overfitting signature — there is no durable edge** in the textbook-indicator approach. Best OOS = −0.025R (tighter_entry), still negative.
 
-**Verdict:** the deterministic textbook-indicator funnel **has no real (out-of-sample) edge** and loses money net of costs. This is exactly what Phase 0 is for — it caught this cheaply *before* scaling. **Chasing more parameter tweaks will keep overfitting.** The honest path is to stop selling "winning picks" and reframe the product (see recommendation). **Do not treat the live picks as a proven edge.** Honest next options (do NOT skip): (1) parameter study + proper walk-forward on a wider, point-in-time universe; (2) replace the textbook signals with a genuinely researched edge (relative-strength/regime focus, better entries); (3) accept the edge isn't there with these signals and pivot the product to *risk-discipline + education + paper-trading* (still valuable per blueprint/00) rather than "winning picks". The platform plumbing is real; the **strategy is not yet validated**.
+**✅ Walk-forward — COMPLETED (2026-06-26):** the rule-based funnel runs over 3 sequential **5-year** windows on real yfinance data (every window is out-of-sample since no parameters are fitted). The yfinance provider was extended to a 5y fetch so each window has its 200-EMA warmup.
+
+| Window | Period | Trades | Expectancy | Win% | PF | Return |
+|---|---|---|---|---|---|---|
+| 1 | 2021–2023 | 61 | +0.046R | 36.1% | 0.88 | −2.5% |
+| 2 | 2023–2024 | 152 | **+0.209R** | 37.5% | 1.13 | **+6.0%** |
+| 3 | 2024–2026 | 114 | **−0.107R** | 28.9% | 0.57 | **−16.5%** |
+
+**The edge is regime/period-dependent, not robust:** positive only in the strong-trend window (2023–24), marginal in 2021–23, and clearly negative in the recent choppy market (2024–26). Win rate is consistently low (29–38%) — the system leans on rare large winners, which is fragile. Averaged it is roughly break-even *before* the recent drawdown, and the most recent, most-relevant window loses. This **confirms** the prior finding with proper walk-forward methodology.
+
+**Verdict — Phase-0 validation is COMPLETE: edge NOT proven (no robust out-of-sample edge).** The deterministic textbook-indicator funnel does not have a durable edge and loses in recent conditions; its profitability is confined to trending years. Phase 0 did its job — it caught this cheaply *before* scaling. **Do not treat the live picks as a proven edge / do not sell "winning picks."** The validated, honest path (already the product's positioning): **risk-discipline + education + paper-trading + a transparent, R-based track record** (blueprint/00) — the screener is framed as *educational technical analysis, not advice*. **Open research direction (R&D, not a Phase-0 pass):** the bull-regime entries chase over-extension and revert — a genuinely researched edge would target better entries (pullback/tight-base) or relative-strength ranking with a stricter over-extension knockout; revisit only with a point-in-time survivorship-free universe.
 
 ## DIRECTION (2026-06-25) — honest swing-trading screener on real data
 

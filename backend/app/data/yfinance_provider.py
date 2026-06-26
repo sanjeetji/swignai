@@ -38,9 +38,12 @@ class YFinanceProvider:
 
     def _download(self, symbol: str, start, end) -> pd.DataFrame:
         yf = self._yf()
-        # default to ~2y of history when no range is given (enough for 200-EMA warmup)
-        if start is None and end is None:
-            df = yf.download(symbol, period="2y", progress=False, auto_adjust=True)
+        # When no explicit start is given, pull a long history (5y) so every walk-forward
+        # window has its 200-EMA warmup; honour `end` by trimming. Explicit ranges pass through.
+        if start is None:
+            df = yf.download(symbol, period="5y", progress=False, auto_adjust=True)
+            if end is not None and df is not None and not df.empty:
+                df = df[df.index <= pd.Timestamp(end)]
         else:
             df = yf.download(symbol, start=start, end=end, progress=False, auto_adjust=True)
         if df is None or df.empty:
