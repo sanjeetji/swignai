@@ -84,7 +84,8 @@
     "loginSub": "Welcome back — sign in to your dashboard.",
     "signupSub": "Create your free account in seconds.",
     "forgotSub": "Enter your email and we’ll send a reset link.",
-    "resetSub": "Choose a new password for your account."
+    "resetSub": "Choose a new password for your account.",
+    "referralOptional": "Referral code (optional)"
   },
   "admin": {
     "title": "Admin",

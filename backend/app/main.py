@@ -19,7 +19,7 @@ from .core.db import init_db
 from .core.observability import init_sentry
 from .core.ratelimit import allow
 from .routers import (admin, auth, cms, health, me, metrics, notifications, paper, picks,
-                      platform, stocks)
+                      platform, referral, stocks)
 
 # Initialise error tracking before the app is built (no-op without SENTRY_DSN).
 init_sentry()
@@ -77,7 +77,8 @@ async def correlation_and_ratelimit(request: Request, call_next):
 
 
 for r in (health.router, platform.router, auth.router, me.router, picks.router, stocks.router,
-          paper.router, cms.router, admin.router, metrics.router, notifications.router):
+          paper.router, cms.router, admin.router, metrics.router, notifications.router,
+          referral.router):
     app.include_router(r)
 
 

@@ -67,8 +67,9 @@ export const api = {
   trackRecord: () => req<any>("/api/track-record").catch(() => null),
 
   // auth
-  register: (email: string, password: string, name?: string) =>
-    req<Tokens>("/api/auth/register", { method: "POST", body: JSON.stringify({ email, password, name }) }),
+  register: (email: string, password: string, name?: string, referral_code?: string) =>
+    req<Tokens>("/api/auth/register", { method: "POST", body: JSON.stringify({ email, password, name, referral_code }) }),
+  referral: (token: string) => req<{ code: string; count: number; referred: any[] }>("/api/me/referral", {}, token).catch(() => ({ code: "", count: 0, referred: [] })),
   login: (email: string, password: string) =>
     req<Tokens>("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
   refresh: (refresh_token: string) =>

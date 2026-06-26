@@ -74,6 +74,9 @@ async def register(body: RegisterIn, req: Request, db: AsyncSession = Depends(ge
     role = (await db.execute(select(Role).where(Role.name == "user"))).scalar_one_or_none()
     if role:
         db.add(UserRole(user_id=user.id, role_id=role.id))
+    # record a referral if a valid code was supplied
+    from .referral import apply_referral
+    await apply_referral(db, body.referral_code, user)
     ctx = await build_client_context(req)
     await ev.security(db, "user.created", user=user, source="api", ip=ctx.get("ip"),
                       resource="user", resource_id=user.id)
