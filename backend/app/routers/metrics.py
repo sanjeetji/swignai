@@ -5,6 +5,7 @@ returns an honest "insufficient data" rather than a fabricated figure.
 """
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from statistics import mean
 
 from fastapi import APIRouter, Depends
@@ -140,8 +141,43 @@ async def journal_review(user: User = Depends(get_current_user), db: AsyncSessio
 
 @router.get("/api/admin/metrics")
 async def admin_metrics(_=Depends(require_permissions("analytics.view")), db: AsyncSession = Depends(get_db)):
-    """Platform overview — real counts (MRR/ARR wire in at Phase 3 with subscriptions)."""
+    """Platform business overview — real MRR/ARR/revenue/trials/conversion from live data."""
+    from ..models.billing import Payment, Plan, Subscription
+
+    now = datetime.now(timezone.utc)
     users = (await db.execute(select(func.count()).select_from(User))).scalar_one()
     trades = (await db.execute(select(func.count()).select_from(PaperTrade))).scalar_one()
-    return {"users": users, "paper_trades": trades, "mrr": 0, "arr": 0,
-            "note": "MRR/ARR populate once subscriptions are live (Phase 3)."}
+    plans = {p.slug: p for p in (await db.execute(select(Plan))).scalars().all()}
+
+    def live(sub: Subscription) -> bool:
+        end = sub.current_period_end
+        if end is not None and end.tzinfo is None:
+            end = end.replace(tzinfo=timezone.utc)
+        return end is None or end >= now
+
+    mrr = 0.0
+    paying = 0
+    active = (await db.execute(select(Subscription).where(Subscription.status == "active"))).scalars().all()
+    for s in active:
+        if not live(s):
+            continue
+        p = plans.get(s.plan)
+        if p and float(p.price_inr) > 0:
+            mrr += float(p.price_inr) / (12 if p.interval == "year" else 1)
+            paying += 1
+
+    trialing = (await db.execute(select(Subscription).where(Subscription.status == "trialing"))).scalars().all()
+    trials = sum(1 for s in trialing if live(s))
+
+    revenue = (await db.execute(
+        select(func.coalesce(func.sum(Payment.amount_inr), 0)).where(Payment.status == "captured")
+    )).scalar_one()
+
+    return {
+        "users": users, "paper_trades": trades,
+        "paying_customers": paying, "trial_users": trials,
+        "mrr": round(mrr, 2), "arr": round(mrr * 12, 2),
+        "total_revenue": float(revenue or 0),
+        "conversion_pct": round(paying / users * 100, 1) if users else 0,
+        "note": "Live from subscriptions + payments.",
+    }

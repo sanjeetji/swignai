@@ -2,7 +2,7 @@
 // Admin overview — platform KPIs + pipeline rerun (blueprint/16,20).
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Users, Activity, IndianRupee, TrendingUp } from "lucide-react";
+import { Users, Activity, IndianRupee, TrendingUp, CreditCard, Sparkles, Wallet, Percent } from "lucide-react";
 import { api } from "@swingai/api-client";
 import { Card, Button } from "@swingai/ui";
 import { useAuth } from "../../../lib/auth";
@@ -27,11 +27,23 @@ export default function AdminOverview() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold tracking-tight">Overview</h1>
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard label="Users" value={String(metrics?.users ?? "…")} Icon={Users} delay={0} />
-        <StatCard label="Paper trades" value={String(metrics?.paper_trades ?? "…")} Icon={Activity} delay={0.05} />
-        <StatCard label="MRR" value={`₹${metrics?.mrr ?? 0}`} Icon={IndianRupee} delay={0.1} />
-        <StatCard label="ARR" value={`₹${metrics?.arr ?? 0}`} Icon={TrendingUp} delay={0.15} />
+      <div>
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Audience</h2>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <StatCard label="Users" value={String(metrics?.users ?? "…")} Icon={Users} delay={0} />
+          <StatCard label="Paper trades" value={String(metrics?.paper_trades ?? "…")} Icon={Activity} delay={0.05} />
+          <StatCard label="Paying customers" value={String(metrics?.paying_customers ?? "…")} Icon={CreditCard} delay={0.1} />
+          <StatCard label="On trial" value={String(metrics?.trial_users ?? "…")} Icon={Sparkles} delay={0.15} />
+        </div>
+      </div>
+      <div>
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Revenue</h2>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <StatCard label="MRR" value={`₹${Number(metrics?.mrr ?? 0).toLocaleString("en-IN")}`} Icon={IndianRupee} tone="up" delay={0} />
+          <StatCard label="ARR" value={`₹${Number(metrics?.arr ?? 0).toLocaleString("en-IN")}`} Icon={TrendingUp} tone="up" delay={0.05} />
+          <StatCard label="Total revenue" value={`₹${Number(metrics?.total_revenue ?? 0).toLocaleString("en-IN")}`} Icon={Wallet} delay={0.1} />
+          <StatCard label="Conversion" value={`${metrics?.conversion_pct ?? 0}%`} Icon={Percent} delay={0.15} />
+        </div>
       </div>
       <Card className="p-5">
         <h2 className="font-semibold">Daily pipeline</h2>
