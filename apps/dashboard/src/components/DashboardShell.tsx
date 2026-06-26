@@ -77,8 +77,9 @@ function ShellInner({ children }: { children: React.ReactNode }) {
   const meta = PAGE_META[seg] || { title: titleCase(seg), sub: "" };
   const doLogout = () => { logout(); router.replace(`/${locale}/login`); };
 
-  // Hard paywall — a lapsed trial/paid plan blocks the whole app until they pick a plan.
-  if (walled) return <SubscriptionWall reason={sub?.reason} onResolved={loadSub} />;
+  // Hard paywall — a lapsed/absent plan blocks the whole app until they pick a plan. The
+  // billing page is exempt so a walled user can always reach checkout to pay/renew.
+  if (walled && seg !== "billing") return <SubscriptionWall reason={sub?.reason} onResolved={loadSub} />;
 
   return (
     <div className="min-h-screen bg-background text-foreground">

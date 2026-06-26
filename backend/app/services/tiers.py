@@ -69,7 +69,8 @@ async def access_state(db: AsyncSession, user) -> dict:
     )).scalars().first()
     now = datetime.now(timezone.utc)
     if not sub:
-        return {"tier": "free", "state": "free", "walled": False, "days_left": None, "reason": None}
+        # No plan chosen yet → must pick one (the wall offers Free as a one-click option).
+        return {"tier": "free", "state": "none", "walled": True, "days_left": None, "reason": "no_plan"}
 
     end = sub.current_period_end
     if end is not None and end.tzinfo is None:
