@@ -17,7 +17,7 @@ function withAlternates(path: string) {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const staticPaths = ["", "/stocks", "/sectors", "/track-record"];
+  const staticPaths = ["", "/stocks", "/sectors", "/track-record", "/pricing", "/blog"];
   const entries: MetadataRoute.Sitemap = staticPaths.map((p) => ({
     ...withAlternates(p),
     changeFrequency: "daily",

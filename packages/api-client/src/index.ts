@@ -65,6 +65,7 @@ export const api = {
   testimonials: (locale = "en") => req<any>(`/api/cms/testimonials?locale=${locale}`),
   stats: (locale = "en") => req<any>(`/api/cms/stats?locale=${locale}`),
   faqs: (locale = "en") => req<{ faqs: any[] }>(`/api/cms/faqs?locale=${locale}`).catch(() => ({ faqs: [] })),
+  blogList: (locale = "en") => req<{ posts: any[] }>(`/api/cms/blog?locale=${locale}`).catch(() => ({ posts: [] })),
   trackRecord: () => req<any>("/api/track-record").catch(() => null),
 
   // auth

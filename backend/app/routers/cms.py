@@ -67,6 +67,18 @@ async def stats(locale: str = "en", db: AsyncSession = Depends(get_db)):
     ]}
 
 
+@router.get("/api/cms/blog")
+async def blog_list(locale: str = "en", db: AsyncSession = Depends(get_db)):
+    """Published blog posts (newest first) — drives the marketing /blog index (blueprint/12)."""
+    rows = (await db.execute(
+        select(CmsPage).where(CmsPage.type == "blog", CmsPage.status == "published")
+        .order_by(CmsPage.slug.desc()).limit(50)
+    )).scalars().all()
+    rows = [p for p in rows if p.locale == locale] or rows
+    return {"posts": [{"slug": p.slug, "title": p.title,
+                       "description": (p.seo or {}).get("description")} for p in rows]}
+
+
 @router.get("/api/cms/faqs")
 async def faqs(locale: str = "en", db: AsyncSession = Depends(get_db)):
     from ..models.cms import Faq

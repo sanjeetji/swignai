@@ -412,6 +412,17 @@ async def recompute_analytics(admin=Depends(require_permissions("picks.override"
     return {"ok": True, **result}
 
 
+@router.post("/run-seo-content")
+async def run_seo_content(admin=Depends(require_permissions("content.manage")),
+                          db: AsyncSession = Depends(get_db)):
+    """Generate this week's SEO blog post from the latest picks (weekly job on-demand)."""
+    from ..jobs.seo_content import run as seo_run
+    result = await seo_run()
+    await ev.admin(db, "content.seo_generated", user=admin, resource="cms_page", payload=result)
+    await db.commit()
+    return {"ok": True, **result}
+
+
 @router.post("/run-retention")
 async def run_retention(admin=Depends(require_permissions("picks.override")),
                         db: AsyncSession = Depends(get_db)):

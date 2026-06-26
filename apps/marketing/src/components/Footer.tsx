@@ -15,6 +15,7 @@ export async function Footer({ locale }: { locale: string }) {
           <nav className="flex flex-wrap gap-x-5 gap-y-2">
             <a href={`/${locale}/pricing`} className={link}>Pricing</a>
             <a href={`/${locale}/track-record`} className={link}>Track Record</a>
+            <a href={`/${locale}/blog`} className={link}>Blog</a>
             <a href={`/${locale}/stocks`} className={link}>Stocks</a>
             <a href={`/${locale}/privacy`} className={link}>Privacy</a>
             <a href={`/${locale}/terms`} className={link}>Terms &amp; Disclaimer</a>
