@@ -17,6 +17,7 @@ from ..data.factory import get_provider
 from ..llm import generate_explanation
 from ..data.sectors import sector_for
 from ..models.trading import AIPick, RegimeLog
+from ..services.revalidate import picks_paths, revalidate
 from ..quant import picker as picker_mod
 from ..quant import regime as regime_mod
 from ..quant.features import analysis_dict, build_features
@@ -84,5 +85,7 @@ async def run() -> dict:
     result = {"date": str(date.date()), "regime": reg, "cash_mode": len(picks) == 0,
               "picks": payload_picks}
     await cache_set(f"picks:{date.date()}", str(len(picks)), ttl=60 * 60 * 24)
+    # refresh the public ISR pages on-demand (best-effort; never fails the job)
+    await revalidate(picks_paths([p["symbol"] for p in payload_picks]))
     logger.info("daily_pipeline: %s picks for %s (regime=%s)", len(picks), date.date(), reg)
     return result

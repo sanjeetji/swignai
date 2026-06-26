@@ -353,6 +353,22 @@ async def run_retention(admin=Depends(require_permissions("picks.override")),
     return {"ok": True, **result}
 
 
+class RevalidateIn(BaseModel):
+    paths: list[str] | None = None      # e.g. ["/en", "/en/stocks"]; defaults to locale homepages
+
+
+@router.post("/revalidate")
+async def admin_revalidate(body: RevalidateIn, admin=Depends(require_permissions("content.manage")),
+                           db: AsyncSession = Depends(get_db)):
+    """Force on-demand ISR revalidation of the given marketing paths (blueprint/08)."""
+    from ..services.revalidate import LOCALES, revalidate
+    paths = body.paths or [f"/{loc}" for loc in LOCALES]
+    result = await revalidate(paths)
+    await ev.admin(db, "content.revalidated", user=admin, resource="isr", payload={"paths": paths, **result})
+    await db.commit()
+    return {"ok": True, **result}
+
+
 @router.get("/audit-log")
 async def audit_log(limit: int = Query(100, ge=1, le=500),
                     _=Depends(require_permissions("events.read")), db: AsyncSession = Depends(get_db)):

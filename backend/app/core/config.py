@@ -52,6 +52,10 @@ class Settings(BaseSettings):
     # --- geo / sessions ---
     GEOIP_ENABLED: bool = False          # IP->city lookup (blueprint/18); off in dev
 
+    # --- ISR on-demand revalidation (backend -> Next marketing app, blueprint/08) ---
+    REVALIDATE_URL: str = "http://localhost:9002/api/revalidate"
+    REVALIDATE_TOKEN: str = "dev-revalidate-token-change-me"   # MUST match the marketing app's token
+
     # --- data retention / DPDP (blueprint/09,19) — nightly purge TTLs (days) ---
     SESSION_RETENTION_DAYS: int = 90          # stale user_sessions rows
     LOGIN_HISTORY_RETENTION_DAYS: int = 180   # login_history rows
