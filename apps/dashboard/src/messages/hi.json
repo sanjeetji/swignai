@@ -7,7 +7,8 @@
     "analyze": "एनालाइज़",
     "journal": "जर्नल",
     "logout": "लॉग आउट",
-    "admin": "एडमिन"
+    "admin": "एडमिन",
+    "settings": "सेटिंग्स"
   },
   "journal": {
     "title": "ट्रेड जर्नल",

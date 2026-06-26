@@ -1,5 +1,5 @@
 export { cn } from "./cn";
-export { ThemeProvider } from "./theme-provider";
+export { ThemeProvider, useThemeControls, FONTS } from "./theme-provider";
 export { swingaiPreset } from "./tailwind-preset";
 export { Button } from "./components/button";
 export { Card } from "./components/card";

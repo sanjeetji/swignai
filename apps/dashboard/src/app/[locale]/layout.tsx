@@ -10,12 +10,16 @@ export default async function LocaleLayout({
 }: { children: React.ReactNode; params: { locale: string } }) {
   const messages = await getMessages();
   const appearance = await api.appearance().catch(() => null);
-  const preset = appearance?.presets.find((p) => p.name === appearance.defaults.preset) ?? null;
   return (
     <html lang={locale} suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+      </head>
       <body>
         <NextIntlClientProvider messages={messages}>
-          <ThemeProvider preset={preset}>
+          <ThemeProvider presets={appearance?.presets ?? []} defaults={appearance?.defaults}>
             <Providers>{children}</Providers>
           </ThemeProvider>
         </NextIntlClientProvider>

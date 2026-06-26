@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { LayoutDashboard, LineChart, BookOpenText, ShieldCheck, LogOut } from "lucide-react";
+import { LayoutDashboard, LineChart, BookOpenText, Settings, ShieldCheck, LogOut } from "lucide-react";
 import { ThemeToggle, LanguageSwitcher } from "@swingai/ui";
 import { api } from "@swingai/api-client";
 import { useAuth } from "../lib/auth";
@@ -32,6 +32,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
     { slug: "dashboard", label: t("nav.dashboard"), Icon: LayoutDashboard },
     { slug: "analyze", label: t("nav.analyze"), Icon: LineChart },
     { slug: "journal", label: t("nav.journal"), Icon: BookOpenText },
+    { slug: "settings", label: t("nav.settings"), Icon: Settings },
     ...(isAdmin ? [{ slug: "admin", label: t("nav.admin"), Icon: ShieldCheck, admin: true } as NavItem] : []),
   ];
   const active = (slug: string) => pathname === `/${locale}/${slug}` || pathname.startsWith(`/${locale}/${slug}/`);
