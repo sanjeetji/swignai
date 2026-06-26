@@ -16,8 +16,12 @@ from fastapi.responses import JSONResponse
 from . import brand
 from .core.config import settings
 from .core.db import init_db
+from .core.observability import init_sentry
 from .core.ratelimit import allow
 from .routers import admin, auth, cms, health, me, metrics, paper, picks, platform, stocks
+
+# Initialise error tracking before the app is built (no-op without SENTRY_DSN).
+init_sentry()
 
 
 @asynccontextmanager

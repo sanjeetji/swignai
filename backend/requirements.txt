@@ -27,3 +27,4 @@ python-multipart
 cryptography             # secrets vault (Fernet)
 pyotp                    # 2FA
 qrcode[pil]              # 2FA provisioning
+sentry-sdk[fastapi]      # error tracking / observability (off until SENTRY_DSN set)

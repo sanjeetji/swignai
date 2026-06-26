@@ -56,6 +56,11 @@ class Settings(BaseSettings):
     REVALIDATE_URL: str = "http://localhost:9002/api/revalidate"
     REVALIDATE_TOKEN: str = "dev-revalidate-token-change-me"   # MUST match the marketing app's token
 
+    # --- observability / Sentry (blueprint/19) — OFF until SENTRY_DSN is set ---
+    SENTRY_DSN: str | None = None
+    SENTRY_TRACES_SAMPLE_RATE: float = 0.0    # 0=errors only; raise in prod for perf tracing
+    RELEASE: str | None = None                # e.g. git sha, for Sentry release tagging
+
     # --- data retention / DPDP (blueprint/09,19) — nightly purge TTLs (days) ---
     SESSION_RETENTION_DAYS: int = 90          # stale user_sessions rows
     LOGIN_HISTORY_RETENTION_DAYS: int = 180   # login_history rows
