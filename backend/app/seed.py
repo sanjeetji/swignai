@@ -109,7 +109,8 @@ async def seed_if_empty() -> None:
             ("llm", "groq"), ("llm", "openrouter"), ("llm", "together"),
             ("llm", "openai"), ("llm", "gemini"),
             ("payments", "razorpay"),
-            ("data", "angelone"),
+            ("data", "angelone"), ("data", "dhan"),
+            ("alerts", "smtp"), ("alerts", "twilio"),
         ]
         have = set((await db.execute(select(Integration.provider))).scalars().all())
         for category, provider in slots:

@@ -1,7 +1,9 @@
-"""SMS / WhatsApp (blueprint/19) via Twilio's REST API (no SDK — basic-auth HTTP).
+"""SMS / WhatsApp (blueprint/17,19) via Twilio's REST API (no SDK — basic-auth HTTP).
 
-Gated on TWILIO_* creds; a no-op (logs) until configured. `TWILIO_FROM` may be a normal
-number (SMS) or `whatsapp:+…` (WhatsApp). Runs in a worker thread; never breaks the caller.
+Creds resolve **vault → .env**: admin pastes Twilio creds in the Integrations tab
+(provider "twilio": auth_token = secret, account_sid/from = config), else TWILIO_* from
+backend/.env. A no-op (logs) until configured. `from` may be a number (SMS) or
+`whatsapp:+…` (WhatsApp). Runs in a worker thread; never breaks the caller.
 """
 from __future__ import annotations
 
@@ -9,31 +11,42 @@ import asyncio
 import logging
 
 from ..core.config import settings
+from . import integrations
 
 logger = logging.getLogger("sms")
 
 
-def configured() -> bool:
-    return bool(settings.TWILIO_ACCOUNT_SID and settings.TWILIO_AUTH_TOKEN and settings.TWILIO_FROM)
+async def _creds(db=None) -> dict:
+    secret, cfg = await integrations.vault(db, "twilio")
+    return {
+        "sid": cfg.get("account_sid") or settings.TWILIO_ACCOUNT_SID,
+        "token": secret or settings.TWILIO_AUTH_TOKEN,
+        "from": cfg.get("from") or settings.TWILIO_FROM,
+    }
 
 
-async def send_sms(to: str, body: str) -> bool:
+async def configured(db=None) -> bool:
+    c = await _creds(db)
+    return bool(c["sid"] and c["token"] and c["from"])
+
+
+async def send_sms(to: str, body: str, *, db=None) -> bool:
     if not to:
         return False
-    if not configured():
+    c = await _creds(db)
+    if not (c["sid"] and c["token"] and c["from"]):
         logger.info("SMS (no Twilio configured) → %s: %s", to, body)
         return False
 
-    # WhatsApp 'from' implies a 'whatsapp:' prefix on 'to' as well.
-    dest = to if not settings.TWILIO_FROM.startswith("whatsapp:") else f"whatsapp:{to}"
+    sender = c["from"]
+    dest = f"whatsapp:{to}" if sender.startswith("whatsapp:") else to
 
     def _send() -> int:
         import requests
-        sid = settings.TWILIO_ACCOUNT_SID
         r = requests.post(
-            f"https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json",
-            auth=(sid, settings.TWILIO_AUTH_TOKEN),
-            data={"From": settings.TWILIO_FROM, "To": dest, "Body": body},
+            f"https://api.twilio.com/2010-04-01/Accounts/{c['sid']}/Messages.json",
+            auth=(c["sid"], c["token"]),
+            data={"From": sender, "To": dest, "Body": body},
             timeout=15,
         )
         return r.status_code

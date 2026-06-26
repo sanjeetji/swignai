@@ -161,7 +161,7 @@ async def forgot_password(body: ForgotPasswordIn, db: AsyncSession = Depends(get
         await db.commit()
         link = f"{settings.REVALIDATE_URL.rsplit('/api', 1)[0]}/reset-password?token={raw}"
         await send_email(user.email, "Reset your SwingAI password",
-                         f"Reset your password (valid {RESET_TTL_MIN} min): {link}")
+                         f"Reset your password (valid {RESET_TTL_MIN} min): {link}", db=db)
         if dev_mode():               # surface the token in dev so it's testable without email
             out["dev_token"] = raw
     return out

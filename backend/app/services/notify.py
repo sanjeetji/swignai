@@ -29,16 +29,20 @@ def _format(type_: str, payload: dict) -> tuple[str, str]:
 
 
 async def _fanout(db: AsyncSession, user_id, type_: str, payload: dict) -> None:
-    """Best-effort email/SMS dispatch — never breaks the calling job."""
+    """Best-effort email/SMS dispatch (vault→.env creds) — never breaks the calling job."""
+    email_on = await email_svc.configured(db)
+    sms_on = await sms_svc.configured(db)
+    if not (email_on or sms_on):
+        return
     user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
     if user is None:
         return
     subject, body = _format(type_, payload)
     try:
-        if email_svc.configured() and user.email:
-            await email_svc.send_email(user.email, subject, body)
-        if sms_svc.configured() and user.phone:
-            await sms_svc.send_sms(user.phone, body)
+        if email_on and user.email:
+            await email_svc.send_email(user.email, subject, body, db=db)
+        if sms_on and user.phone:
+            await sms_svc.send_sms(user.phone, body, db=db)
     except Exception as e:
         logger.warning("notify fan-out failed for user %s: %s", user_id, e)
 
@@ -49,7 +53,7 @@ async def push(db: AsyncSession, user_id, type_: str, payload: dict,
     are configured, fan the same alert out to those channels. Returns the in-app row."""
     n = Notification(user_id=user_id, type=type_, channel=channel, payload=payload, status="sent")
     db.add(n)
-    if fanout and (email_svc.configured() or sms_svc.configured()):
+    if fanout:
         await _fanout(db, user_id, type_, payload)
     elif channel != "inapp":
         logger.info("notify[%s] → user %s: %s", channel, user_id, type_)
