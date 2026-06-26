@@ -5,6 +5,7 @@ blueprint/07,10. Idempotent: upserts `ai_picks` on (symbol, date) and writes the
 """
 from __future__ import annotations
 
+import json
 import logging
 
 from sqlalchemy import select
@@ -81,6 +82,19 @@ async def run() -> dict:
         await ev.system(db, "pipeline.daily.completed", resource="ai_picks",
                         payload={"regime": reg, "count": len(picks), "date": str(date.date())})
         await db.commit()
+
+    # Populate the scanner's cache (same shape /api/scan caches) from the SAME features we just
+    # fetched, so the scanner page is instant — no separate ~500-symbol recompute on first open.
+    try:
+        from ..data.sectors import sector_for
+        from ..quant.scanner import scan_universe
+        scan_data = scan_universe(date, feats, index_close, DEFAULT, settings.DEFAULT_CAPITAL)
+        scan_data["date"] = str(date.date())
+        for r in scan_data["results"]:
+            r["sector"] = sector_for(r["symbol"])
+        await cache_set("scan:latest", json.dumps(scan_data), ttl=60 * 60 * 24)
+    except Exception:
+        logger.exception("daily_pipeline: scan cache population failed")
 
     result = {"date": str(date.date()), "regime": reg, "cash_mode": len(picks) == 0,
               "picks": payload_picks}
