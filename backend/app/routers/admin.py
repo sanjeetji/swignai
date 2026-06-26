@@ -7,7 +7,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -232,6 +232,35 @@ async def event_logs(category: str | None = None, level: str | None = None,
          "request_id": e.request_id, "created_at": str(e.created_at), "payload": e.payload}
         for e in rows
     ]}
+
+
+@router.get("/event-logs/export")
+async def export_event_logs(category: str | None = None, level: str | None = None,
+                            limit: int = Query(5000, ge=1, le=50000),
+                            _=Depends(require_permissions("events.read")), db: AsyncSession = Depends(get_db)):
+    """Same filters as the viewer, streamed as a CSV download (audit/export, blueprint/22)."""
+    import csv
+    import io
+
+    stmt = select(EventLog).order_by(desc(EventLog.created_at)).limit(limit)
+    if category:
+        stmt = stmt.where(EventLog.category == category)
+    if level:
+        stmt = stmt.where(EventLog.level == level)
+    rows = (await db.execute(stmt)).scalars().all()
+
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["id", "created_at", "type", "category", "level", "actor", "source",
+                "resource", "resource_id", "ip", "request_id"])
+    for e in rows:
+        w.writerow([str(e.id), str(e.created_at), e.event_type, e.category, e.level,
+                    str(e.actor_user_id) if e.actor_user_id else "", e.source,
+                    e.resource or "", e.resource_id or "", e.ip or "", e.request_id or ""])
+    return Response(
+        content=buf.getvalue(), media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="event-logs.csv"'},
+    )
 
 
 @router.post("/rerun-pipeline")
