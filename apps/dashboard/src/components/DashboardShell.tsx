@@ -22,6 +22,8 @@ function ShellInner({ children }: { children: React.ReactNode }) {
   const { locale } = useParams<{ locale: string }>();
   const token = useAuth((s) => s.token);
   const logout = useAuth((s) => s.logout);
+  const impersonating = useAuth((s) => s.impersonating);
+  const stopImpersonation = useAuth((s) => s.stopImpersonation);
   const [me, setMe] = useState<any>(null);
 
   useEffect(() => {
@@ -90,6 +92,12 @@ function ShellInner({ children }: { children: React.ReactNode }) {
         <header className="sticky top-0 z-20 hidden items-center justify-end gap-1 border-b border-border bg-background/70 px-10 py-2.5 backdrop-blur lg:flex">
           <NotificationBell /><LanguageSwitcher /><ThemeToggle />
         </header>
+        {impersonating && (
+          <div className="flex flex-wrap items-center justify-center gap-3 bg-warning/15 px-4 py-2 text-center text-sm text-warning">
+            <span>Viewing as <b>{impersonating}</b> (admin impersonation)</span>
+            <button onClick={stopImpersonation} className="rounded-md border border-warning/40 px-2 py-0.5 text-xs font-medium hover:bg-warning/20">Exit</button>
+          </div>
+        )}
         <main className="px-4 pb-24 pt-5 sm:px-6 lg:px-10 lg:pb-10 lg:pt-8">
           <div className="mx-auto max-w-5xl">{children}</div>
         </main>

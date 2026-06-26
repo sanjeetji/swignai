@@ -116,6 +116,7 @@ export const api = {
   blockUser: (token: string, id: string) => req<any>(`/api/admin/users/${id}/block`, { method: "POST" }, token),
   unblockUser: (token: string, id: string) => req<any>(`/api/admin/users/${id}/unblock`, { method: "POST" }, token),
   forceLogout: (token: string, id: string) => req<any>(`/api/admin/users/${id}/force-logout`, { method: "POST" }, token),
+  impersonate: (token: string, id: string) => req<{ access_token: string; refresh_token: string; email: string }>(`/api/admin/users/${id}/impersonate`, { method: "POST" }, token),
   eventLogs: (token: string, category?: string, level?: string) => {
     const q = new URLSearchParams();
     if (category) q.set("category", category);

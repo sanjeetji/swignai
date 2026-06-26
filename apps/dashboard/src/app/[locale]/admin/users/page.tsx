@@ -1,12 +1,16 @@
 "use client";
 // Users — list, search, block/unblock, force-logout (blueprint/18). All API-driven.
 import { useCallback, useEffect, useState } from "react";
+import { useRouter, useParams } from "next/navigation";
 import { api } from "@swingai/api-client";
 import { Card, Button } from "@swingai/ui";
 import { useAuth } from "../../../../lib/auth";
 
 export default function AdminUsers() {
   const token = useAuth((s) => s.token);
+  const startImpersonation = useAuth((s) => s.startImpersonation);
+  const router = useRouter();
+  const { locale } = useParams<{ locale: string }>();
   const [data, setData] = useState<any>(null);
   const [q, setQ] = useState("");
   const [denied, setDenied] = useState(false);
@@ -51,6 +55,10 @@ export default function AdminUsers() {
                   ? <Button size="sm" variant="outline" onClick={() => token && act(api.unblockUser(token, u.id))}>Unblock</Button>
                   : <Button size="sm" variant="outline" onClick={() => token && act(api.blockUser(token, u.id))}>Block</Button>}
                 <Button size="sm" variant="ghost" onClick={() => token && act(api.forceLogout(token, u.id))}>Force-logout</Button>
+                <Button size="sm" variant="ghost" onClick={async () => {
+                  if (!token) return;
+                  try { const r = await api.impersonate(token, u.id); startImpersonation(r.access_token, r.refresh_token, r.email); router.push(`/${locale}/dashboard`); } catch {}
+                }}>View as</Button>
               </div>
             </div>
             {open === u.id && (

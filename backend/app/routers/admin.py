@@ -5,7 +5,7 @@ All endpoints permission-gated server-side. Full-page UIs consume these (bluepri
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from pydantic import BaseModel
@@ -78,6 +78,33 @@ async def force_logout(user_id: str, admin=Depends(require_permissions("users.re
                    payload={"revoked": n})
     await db.commit()
     return {"id": str(user.id), "revoked": n}
+
+
+@router.post("/users/{user_id}/impersonate")
+async def impersonate(user_id: str, admin=Depends(require_permissions("users.impersonate")),
+                      db: AsyncSession = Depends(get_db)):
+    """Issue a session token for a target user — support 'view as'. Audit-logged; the token
+    carries an `imp` claim (the admin's id) so impersonated activity is traceable."""
+    from ..core.config import settings
+    from ..core.security import create_access_token, create_refresh_token
+
+    target = await db.get(User, uuid.UUID(user_id))
+    if not target:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    if target.is_blocked:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "User is blocked")
+    now = datetime.now(timezone.utc)
+    sess = UserSession(user_id=target.id, is_active=True, last_active_at=now, geo={},
+                       device="impersonation",
+                       expires_at=now + timedelta(days=settings.REFRESH_TOKEN_TTL_DAYS))
+    db.add(sess)
+    await db.flush()
+    await ev.admin(db, "user.impersonated", level="warning", user=admin, resource="user",
+                   resource_id=user_id, payload={"target": target.email})
+    await db.commit()
+    return {"access_token": create_access_token(str(target.id), extra={"sid": str(sess.id), "imp": str(admin.id)}),
+            "refresh_token": create_refresh_token(str(target.id), str(sess.id)),
+            "email": target.email}
 
 
 @router.post("/users/{user_id}/unblock")
