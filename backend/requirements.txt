@@ -4,6 +4,9 @@ numpy>=1.24
 
 # Real NSE/BSE data (Phase 0 backtests + Phase 1 live). Optional for tests (synthetic provider).
 yfinance>=0.2.40
+smartapi-python>=1.4.0          # Angel One SmartAPI — official production NSE data
+logzero                         # smartapi-python transitive dep (not auto-pulled)
+websocket-client                # smartapi-python (live feed) dep
 
 # Dev / tests
 pytest>=8.0

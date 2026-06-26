@@ -10,5 +10,8 @@ def get_provider(name: str = "synthetic", **kwargs):
     if name in ("yfinance", "yahoo"):
         from .yfinance_provider import YFinanceProvider
         return YFinanceProvider(**kwargs)
-    # Phase 1.5+: angelone, dhan (blueprint/02)
+    if name in ("angelone", "angel"):
+        from .angelone_provider import AngelOneProvider
+        return AngelOneProvider(**kwargs)
+    # Phase 2+: dhan fallback (blueprint/02)
     raise ValueError(f"Unknown data provider: {name!r}")

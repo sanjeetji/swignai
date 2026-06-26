@@ -36,6 +36,12 @@ class Settings(BaseSettings):
     DATA_PROVIDER: str = "synthetic"     # synthetic | yfinance | angelone | dhan
     DEFAULT_CAPITAL: float = 100000.0
 
+    # --- Angel One SmartAPI (official NSE data) — set in backend/.env ---
+    ANGELONE_API_KEY: str | None = None
+    ANGELONE_CLIENT_CODE: str | None = None      # your Angel One login id
+    ANGELONE_MPIN: str | None = None             # MPIN / password
+    ANGELONE_TOTP_SECRET: str | None = None      # base32 secret from enable-totp
+
     # --- jobs / LLM ---
     ENABLE_SCHEDULER: bool = False       # off in dev/tests; true in prod to run cron jobs
     LLM_PROVIDER: str = "template"       # template | gemini | openrouter | anthropic | openai
