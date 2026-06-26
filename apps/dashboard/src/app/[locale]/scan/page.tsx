@@ -113,7 +113,10 @@ function ScanInner() {
                     <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs text-primary">● Holding</span>
                   ) : r.plan ? (
                     <BuyButton symbol={r.symbol} plan={r.plan} token={token} onDone={loadHeld} />
-                  ) : null}
+                  ) : (
+                    <span title="Strong stock, but no clean entry right now (over-extended / no valid stop). Wait for a pullback."
+                      className="rounded-full bg-warning/15 px-2 py-0.5 text-xs font-medium text-warning">Watchlist</span>
+                  )}
                   <Link href={`/${locale}/analyze?symbol=${r.symbol}`}>
                     <Button size="sm" variant="ghost"><ArrowUpRight size={14} /></Button>
                   </Link>
@@ -124,7 +127,7 @@ function ScanInner() {
           </div>
         </Card>
       )}
-      <p className="text-xs text-muted-foreground">Deterministic technical screening over {data?.count ?? 0} NSE large/mid-caps — educational, not advice.</p>
+      <p className="text-xs text-muted-foreground">Deterministic technical screening over {data?.count ?? 0} NIFTY 500 stocks. <b className="text-foreground">Quant score</b> ranks strength; a <b className="text-foreground">Paper trade</b> button means a clean entry exists now (R:R ≥ 2). <span className="text-warning">Watchlist</span> = strong but wait for a setup. Educational, not advice.</p>
     </div>
   );
 }

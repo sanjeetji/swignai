@@ -3,7 +3,7 @@
 // app load a stored refresh token is exchanged for a fresh access token so returning
 // users stay signed in. Logout revokes the server session too (blueprint/19).
 import { create } from "zustand";
-import { api } from "@swingai/api-client";
+import { api, setTokenRefresher } from "@swingai/api-client";
 
 const ACCESS = "swingai_token";
 const REFRESH = "swingai_refresh";
@@ -60,6 +60,23 @@ export const useAuth = create<AuthState>((set, get) => ({
   },
   load: () => {
     if (typeof window === "undefined") return;
+    // Register the api-client's refresh-on-401 hook: when an access token expires mid-session,
+    // any authed call transparently swaps in a fresh one (using the refresh token) and retries.
+    setTokenRefresher(async () => {
+      const r = get().refresh;
+      if (!r) return null;
+      try {
+        const tk = await api.refresh(r);
+        persist(tk.access_token, tk.refresh_token ?? r);
+        set({ token: tk.access_token, ...(tk.refresh_token ? { refresh: tk.refresh_token } : {}) });
+        return tk.access_token;
+      } catch {
+        // refresh token is dead too → force a clean logout
+        persist(null, null);
+        set({ token: null, refresh: null });
+        return null;
+      }
+    });
     const access = localStorage.getItem(ACCESS);
     const refresh = localStorage.getItem(REFRESH);
     let impersonating: string | null = null;

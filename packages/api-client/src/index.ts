@@ -69,20 +69,31 @@ function _bump(delta: number) {
   _activitySubs.forEach((cb) => cb(_inflight));
 }
 
-async function req<T>(path: string, init: RequestInit = {}, token?: string): Promise<T> {
+// The auth store registers a refresher; on a 401 with an expired access token we transparently
+// exchange the refresh token for a new access token and retry the request once.
+let _tokenRefresher: (() => Promise<string | null>) | null = null;
+export function setTokenRefresher(fn: (() => Promise<string | null>) | null) { _tokenRefresher = fn; }
+
+async function req<T>(path: string, init: RequestInit = {}, token?: string, _retried = false): Promise<T> {
   const headers: Record<string, string> = { "Content-Type": "application/json", ...(init.headers as any) };
   if (token) headers["Authorization"] = `Bearer ${token}`;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), REQ_TIMEOUT_MS);
   _bump(1);
+  let res: Response;
   try {
-    const res = await fetch(`${API_BASE}${path}`, { ...init, headers, cache: "no-store", signal: ctrl.signal });
-    if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
-    return res.json() as Promise<T>;
+    res = await fetch(`${API_BASE}${path}`, { ...init, headers, cache: "no-store", signal: ctrl.signal });
   } finally {
     clearTimeout(timer);
     _bump(-1);
   }
+  // Expired/invalid access token → refresh once and retry (keeps long sessions working without a reload).
+  if (res.status === 401 && token && _tokenRefresher && !_retried) {
+    const fresh = await _tokenRefresher().catch(() => null);
+    if (fresh && fresh !== token) return req<T>(path, init, fresh, true);
+  }
+  if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
+  return res.json() as Promise<T>;
 }
 
 export const api = {
