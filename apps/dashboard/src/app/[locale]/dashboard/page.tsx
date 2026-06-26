@@ -35,18 +35,28 @@ function DashboardInner() {
   // and poll until today's picks land — the server keeps running even if the trigger request
   // exceeds the client timeout. The top progress bar shows throughout (each call is in-flight).
   const loadPicks = useCallback(async (tok: string) => {
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
     let p = await api.dailyPicks().catch(() => null);
-    if (p) setPicks(p);
-    if (tok && (!p || !p.picks || p.picks.length === 0)) {
-      setFetchingData(true);
-      api.refreshPicks(tok).catch(() => {});          // fires a background scan on the server
-      // A full NIFTY-500 scan takes a few minutes on the first run; poll up to ~7 min.
-      for (let i = 0; i < 110; i++) {
-        await new Promise((r) => setTimeout(r, 4000));
-        const np = await api.dailyPicks().catch(() => null);
-        if (np && np.picks && np.picks.length > 0) { setPicks(np); break; }
-      }
-      setFetchingData(false);
+    if (p?.picks?.length) { setPicks(p); return; }   // already have picks → done
+    if (!tok) { setPicks(p); return; }
+
+    // Empty DB (first run): the server scans NIFTY 50 first (fast paint), then the full universe.
+    setFetchingData(true);
+    api.refreshPicks(tok).catch(() => {});
+    for (let i = 0; i < 30; i++) {                    // wait ~90s for the fast NIFTY 50 picks
+      await sleep(3000);
+      p = await api.dailyPicks().catch(() => null);
+      if (p?.picks?.length) { setPicks(p); break; }
+    }
+    setFetchingData(false);
+
+    // Quietly upgrade to the broader NIFTY 500 picks when the full scan finishes (no loader).
+    let key = p?.picks?.map((x: any) => x.symbol).join(",") || "";
+    for (let i = 0; i < 90; i++) {                    // up to ~10 min
+      await sleep(7000);
+      const np = await api.dailyPicks().catch(() => null);
+      const k = np?.picks?.map((x: any) => x.symbol).join(",") || "";
+      if (k && k !== key) { setPicks(np); break; }
     }
   }, []);
 
@@ -84,8 +94,8 @@ function DashboardInner() {
         <div className="flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
           <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
           <div>
-            <div className="text-sm font-medium">Scanning the market for today's setups…</div>
-            <div className="text-xs text-muted-foreground">Running the screener across ~500 NSE stocks on live prices — the first scan takes a few minutes. You can keep using the app; picks appear here automatically.</div>
+            <div className="text-sm font-medium">Finding today's top setups…</div>
+            <div className="text-xs text-muted-foreground">Scanning the Nifty 50 first for a quick read, then widening to the full Nifty 500 in the background. Picks appear here automatically — you can keep using the app.</div>
           </div>
         </div>
       )}

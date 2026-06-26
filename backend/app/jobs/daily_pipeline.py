@@ -27,15 +27,33 @@ from ..services import event_log as ev
 logger = logging.getLogger("daily_pipeline")
 
 
-async def run() -> dict:
+async def run(universe: str | None = None) -> dict:
+    """`universe` (e.g. 'nifty50') scopes the scan to a tier for a fast first paint; default =
+    the full configured universe (NIFTY 500)."""
     provider = get_provider(settings.DATA_PROVIDER,
                             **({"days": 600} if settings.DATA_PROVIDER == "synthetic" else {}))
-    index_close = provider.get_index()
-    feats = {}
-    for sym in provider.get_universe():
-        df = provider.get_ohlcv(sym)
-        if df is not None and not df.empty and len(df) >= DEFAULT.warmup_bars + 5:
-            feats[sym] = build_features(df, index_close, DEFAULT)
+    if universe:
+        from ..data.nifty500 import tier_symbols
+        try:
+            provider.universe = tier_symbols(universe)   # scope to the tier (angelone/dhan)
+        except Exception:
+            pass
+
+    # The provider's market-data calls are blocking (Angel One HTTP). Run the whole fetch in a
+    # worker thread so we don't freeze the event loop (which would make the API unresponsive —
+    # e.g. the dashboard polling /api/daily-picks during the scan).
+    import asyncio
+
+    def _fetch_features():
+        idx = provider.get_index()
+        f = {}
+        for sym in provider.get_universe():
+            df = provider.get_ohlcv(sym)
+            if df is not None and not df.empty and len(df) >= DEFAULT.warmup_bars + 5:
+                f[sym] = build_features(df, idx, DEFAULT)
+        return f, idx
+
+    feats, index_close = await asyncio.to_thread(_fetch_features)
 
     date = index_close.index[-1]
     reg = regime_mod.regime_for_date(index_close, date, DEFAULT)
@@ -83,17 +101,19 @@ async def run() -> dict:
                         payload={"regime": reg, "count": len(picks), "date": str(date.date())})
         await db.commit()
 
-    # Populate the scanner's cache (same shape /api/scan caches) from the SAME features we just
-    # fetched, so the scanner page is instant — no separate ~500-symbol recompute on first open.
-    try:
-        from ..quant.scanner import scan_universe
-        scan_data = scan_universe(date, feats, index_close, DEFAULT, settings.DEFAULT_CAPITAL)
-        scan_data["date"] = str(date.date())
-        for r in scan_data["results"]:
-            r["sector"] = sector_for(r["symbol"])
-        await cache_set("scan:latest", json.dumps(scan_data), ttl=60 * 60 * 24)
-    except Exception:
-        logger.exception("daily_pipeline: scan cache population failed")
+    # Populate the scanner's full-scan cache (scan:latest) from the SAME features — but ONLY on a
+    # full run. A tier (fast-paint) run must not overwrite scan:latest with a partial universe,
+    # or the scanner's tier derivation would be wrong until the full run lands.
+    if universe is None:
+        try:
+            from ..quant.scanner import scan_universe
+            scan_data = scan_universe(date, feats, index_close, DEFAULT, settings.DEFAULT_CAPITAL)
+            scan_data["date"] = str(date.date())
+            for r in scan_data["results"]:
+                r["sector"] = sector_for(r["symbol"])
+            await cache_set("scan:latest", json.dumps(scan_data), ttl=60 * 60 * 24)
+        except Exception:
+            logger.exception("daily_pipeline: scan cache population failed")
 
     result = {"date": str(date.date()), "regime": reg, "cash_mode": len(picks) == 0,
               "picks": payload_picks}

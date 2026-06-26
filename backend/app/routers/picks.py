@@ -120,13 +120,15 @@ _refresh_in_progress = False
 
 
 async def _run_pipeline_bg():
-    """Run the screener in the background (its own DB session) so a multi-minute NIFTY-500 scan
-    isn't tied to the HTTP request — the dashboard polls /api/daily-picks for the result."""
+    """Populate picks in the background (own DB session), FAST-FIRST: scan NIFTY 50 first so the
+    dashboard paints picks in ~25–75s, then scan the full configured universe (NIFTY 500) and
+    upsert — the dashboard polls /api/daily-picks and swaps in the broader set when it lands."""
     global _refresh_in_progress
     _refresh_in_progress = True
     try:
         from ..jobs.daily_pipeline import run
-        await run()
+        await run(universe="nifty50")   # fast first paint
+        await run()                     # then the full universe (default NIFTY 500)
     except Exception:
         logging.getLogger("picks").exception("background pipeline failed")
     finally:
@@ -169,16 +171,9 @@ async def sectors():
     return {"sectors": m, "count": len(m)}
 
 
-# Universe tiers the user can scan (top-N by market cap from the NIFTY 500 list, which is
-# ordered large→mid). "nifty500" = the whole list. Default tier is the fast nifty50.
-SCAN_TIERS = {"nifty50": 50, "nifty100": 100, "nifty150": 150, "nifty200": 200,
-              "nifty250": 250, "nifty300": 300, "nifty500": 100000}
+from ..data.nifty500 import SCAN_TIERS, tier_symbols as _tier_symbols  # noqa: E402
+
 _scan_jobs: set[str] = set()   # tiers currently being scanned (in-process guard)
-
-
-def _tier_symbols(tier: str) -> list[str]:
-    from ..data.nifty500 import NIFTY_500
-    return NIFTY_500[: SCAN_TIERS.get(tier, 50)]
 
 
 async def _scan_tier_bg(tier: str):
@@ -192,7 +187,10 @@ async def _scan_tier_bg(tier: str):
             provider.universe = _tier_symbols(tier)   # scope the provider to this tier
         except Exception:
             pass
-        feats, index_close = _load_features(provider)
+        # _load_features makes blocking Angel One calls — run off the event loop so the API
+        # stays responsive (dashboard/scanner polling) while the tier scans.
+        import asyncio
+        feats, index_close = await asyncio.to_thread(_load_features, provider)
         if index_close is None or len(index_close) == 0:
             return  # degraded fetch (bad index) — do NOT cache; let it retry next request
         date = index_close.index[-1]

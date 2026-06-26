@@ -107,3 +107,12 @@ NIFTY_500: list[str] = [
 
 # De-duplicated, order preserved.
 NIFTY_500 = list(dict.fromkeys(NIFTY_500))
+
+# Universe tiers the user can scan (top-N of the market-cap-ordered list). nifty500 = the whole list.
+SCAN_TIERS = {"nifty50": 50, "nifty100": 100, "nifty150": 150, "nifty200": 200,
+              "nifty250": 250, "nifty300": 300, "nifty500": 100000}
+
+
+def tier_symbols(tier: str) -> list[str]:
+    """Symbols for a tier, e.g. tier_symbols('nifty150') = the first 150 of NIFTY_500."""
+    return NIFTY_500[: SCAN_TIERS.get(tier, 50)]
