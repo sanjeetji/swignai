@@ -79,6 +79,16 @@ class VerifyPaymentIn(BaseModel):
     razorpay_signature: str
 
 
+class PlanIn(BaseModel):
+    name: str
+    price_inr: float
+    interval: str = "month"
+    features: list[str] = []
+    is_active: bool = True
+    is_featured: bool = False
+    sort_order: int = 0
+
+
 # --- admin ---
 class AppearanceIn(BaseModel):
     default_theme_mode: str | None = None

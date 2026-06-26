@@ -4,10 +4,25 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, JSON, Numeric, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..core.db import Base, TimestampMixin, uuid_pk
+
+
+class Plan(Base, TimestampMixin):
+    """Admin-managed subscription plan (blueprint/20) — shown on marketing + dashboard."""
+    __tablename__ = "plans"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    slug: Mapped[str] = mapped_column(String(40), unique=True, index=True)   # pro / premium / custom
+    name: Mapped[str] = mapped_column(String(80))
+    price_inr: Mapped[float] = mapped_column(Numeric(12, 2))
+    interval: Mapped[str] = mapped_column(String(12), default="month")       # month / year
+    features: Mapped[list] = mapped_column(JSON, default=list)               # list[str]
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_featured: Mapped[bool] = mapped_column(Boolean, default=False)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class Subscription(Base, TimestampMixin):

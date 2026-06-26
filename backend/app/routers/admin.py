@@ -18,7 +18,7 @@ from ..models.event import EventLog
 from ..models.platform import FeatureFlag, Integration, PlatformSetting
 from ..models.session import LoginHistory, UserBlock, UserSession
 from ..models.user import User
-from ..schemas import AppearanceIn, IntegrationIn
+from ..schemas import AppearanceIn, IntegrationIn, PlanIn
 from ..services import event_log as ev
 from ..services import secret_box
 
@@ -314,6 +314,49 @@ async def delete_flag(key: str, admin=Depends(require_permissions("feature_flags
                    resource="feature_flag", resource_id=key)
     await db.commit()
     return {"deleted": key}
+
+
+# ---------------- Plans (blueprint/20) — admin-managed pricing ----------------
+@router.get("/plans")
+async def list_plans(_=Depends(require_permissions("settings.appearance")),
+                     db: AsyncSession = Depends(get_db)):
+    from ..models.billing import Plan
+    rows = (await db.execute(select(Plan).order_by(Plan.sort_order, Plan.price_inr))).scalars().all()
+    return {"plans": [
+        {"slug": p.slug, "name": p.name, "price_inr": float(p.price_inr), "interval": p.interval,
+         "features": p.features or [], "is_active": p.is_active, "is_featured": p.is_featured,
+         "sort_order": p.sort_order} for p in rows
+    ]}
+
+
+@router.put("/plans/{slug}")
+async def upsert_plan(slug: str, body: PlanIn, admin=Depends(require_permissions("settings.appearance")),
+                      db: AsyncSession = Depends(get_db)):
+    from ..models.billing import Plan
+    p = (await db.execute(select(Plan).where(Plan.slug == slug))).scalar_one_or_none()
+    created = p is None
+    if p is None:
+        p = Plan(slug=slug)
+        db.add(p)
+    p.name, p.price_inr, p.interval = body.name, body.price_inr, body.interval
+    p.features, p.is_active, p.is_featured, p.sort_order = body.features, body.is_active, body.is_featured, body.sort_order
+    await ev.admin(db, "plan.upserted", user=admin, resource="plan", resource_id=slug,
+                   payload={"created": created, "price": body.price_inr})
+    await db.commit()
+    return {"slug": slug, "ok": True}
+
+
+@router.delete("/plans/{slug}")
+async def delete_plan(slug: str, admin=Depends(require_permissions("settings.appearance")),
+                      db: AsyncSession = Depends(get_db)):
+    from ..models.billing import Plan
+    p = (await db.execute(select(Plan).where(Plan.slug == slug))).scalar_one_or_none()
+    if not p:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Plan not found")
+    await db.delete(p)
+    await ev.admin(db, "plan.deleted", level="warning", user=admin, resource="plan", resource_id=slug)
+    await db.commit()
+    return {"deleted": slug}
 
 
 @router.post("/rerun-pipeline")

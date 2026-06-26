@@ -11,6 +11,7 @@ from sqlalchemy import func, select
 
 from .core.db import SessionLocal
 from .core.security import hash_password
+from .models.billing import Plan
 from .models.cms import CmsPage, CmsSection, StatMetric, Testimonial
 from .models.platform import FeatureFlag, PlatformSetting, ThemePreset
 from .models.user import Permission, Role, RolePermission, User, UserRole
@@ -85,6 +86,15 @@ async def seed_if_empty() -> None:
             for i, (name, label, light, dark) in enumerate(PRESETS):
                 db.add(ThemePreset(name=name, label=label, tokens_light=light, tokens_dark=dark,
                                    sort_order=i))
+
+        # --- subscription plans (admin-editable; shown on marketing + dashboard) ---
+        if await _empty(db, Plan):
+            db.add(Plan(slug="pro", name="Pro", price_inr=499, sort_order=1, is_featured=False,
+                        features=["Daily picks + full scanner", "Paper trading + journal",
+                                  "Personal analytics & alerts"]))
+            db.add(Plan(slug="premium", name="Premium", price_inr=999, sort_order=2, is_featured=True,
+                        features=["Everything in Pro", "Priority data refresh",
+                                  "Early access to new features"]))
 
         # --- feature flags (admin-togglable; on by default for core Layers) ---
         if await _empty(db, FeatureFlag):

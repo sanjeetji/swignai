@@ -10,5 +10,5 @@ from .cms import (  # noqa: F401
     CmsPage, CmsSection, ContentCategory, ContentItem, Testimonial, StatMetric,
     Faq, NavigationMenu, MediaAsset, SeoMeta, ContentVersion,
 )
-from .billing import Subscription, Payment, Notification  # noqa: F401
+from .billing import Plan, Subscription, Payment, Notification  # noqa: F401
 from .referral import ReferralCode, Referral  # noqa: F401

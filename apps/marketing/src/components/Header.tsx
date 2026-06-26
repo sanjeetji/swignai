@@ -20,6 +20,7 @@ export function Header() {
       <div className="flex items-center gap-2">
         <a href={`/${locale}/stocks`} className="hidden px-2 text-sm text-muted-foreground transition-colors hover:text-foreground md:inline">Stocks</a>
         <a href={`/${locale}/sectors`} className="hidden px-2 text-sm text-muted-foreground transition-colors hover:text-foreground md:inline">Sectors</a>
+        <a href={`/${locale}/pricing`} className="hidden px-2 text-sm text-muted-foreground transition-colors hover:text-foreground sm:inline">Pricing</a>
         <a href={`/${locale}/track-record`} className="hidden px-2 text-sm text-muted-foreground transition-colors hover:text-foreground sm:inline">
           {t("nav.trackRecord")}
         </a>

@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.db import get_db
 from ..core.security import get_current_user
-from ..models.billing import Payment, Subscription
+from ..models.billing import Payment, Plan, Subscription
 from ..models.user import User
 from ..schemas import CreateOrderIn, VerifyPaymentIn
 from ..services import event_log as ev
@@ -22,18 +22,21 @@ from ..services import razorpay
 
 router = APIRouter(prefix="/api/billing", tags=["billing"])
 
-PLANS = {
-    "pro": {"name": "Pro", "price_inr": 499,
-            "features": ["Daily picks + full scanner", "Paper trading + journal", "Personal analytics & alerts"]},
-    "premium": {"name": "Premium", "price_inr": 999,
-                "features": ["Everything in Pro", "Priority data refresh", "Early access to new features"]},
-}
+
+async def _plan(db: AsyncSession, slug: str) -> Plan | None:
+    return (await db.execute(select(Plan).where(Plan.slug == slug, Plan.is_active == True))).scalar_one_or_none()  # noqa: E712
 
 
 @router.get("/plans")
-async def plans():
-    return {"plans": [{"id": k, **v} for k, v in PLANS.items()], "currency": "INR",
-            "enabled": razorpay.configured()}
+async def plans(db: AsyncSession = Depends(get_db)):
+    """Public list of active plans (drives the marketing pricing section + dashboard)."""
+    rows = (await db.execute(
+        select(Plan).where(Plan.is_active == True).order_by(Plan.sort_order, Plan.price_inr)  # noqa: E712
+    )).scalars().all()
+    return {"plans": [
+        {"id": p.slug, "name": p.name, "price_inr": float(p.price_inr), "interval": p.interval,
+         "features": p.features or [], "featured": p.is_featured} for p in rows
+    ], "currency": "INR", "enabled": razorpay.configured()}
 
 
 @router.get("/subscription")
@@ -49,12 +52,12 @@ async def my_subscription(user: User = Depends(get_current_user), db: AsyncSessi
 @router.post("/create-order")
 async def create_order(body: CreateOrderIn, user: User = Depends(get_current_user),
                        db: AsyncSession = Depends(get_db)):
-    plan = PLANS.get(body.plan)
+    plan = await _plan(db, body.plan)
     if not plan:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unknown plan")
     key_id, _, _ = await razorpay.creds(db)
     try:
-        order = await razorpay.create_order(db, plan["price_inr"], receipt=f"{body.plan}:{user.id}")
+        order = await razorpay.create_order(db, float(plan.price_inr), receipt=f"{body.plan}:{user.id}")
     except Exception as e:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Payment gateway error: {str(e)[:120]}")
     return {"order_id": order["id"], "amount": order["amount"], "currency": order["currency"],
@@ -64,7 +67,7 @@ async def create_order(body: CreateOrderIn, user: User = Depends(get_current_use
 @router.post("/verify")
 async def verify(body: VerifyPaymentIn, user: User = Depends(get_current_user),
                  db: AsyncSession = Depends(get_db)):
-    plan = PLANS.get(body.plan)
+    plan = await _plan(db, body.plan)
     if not plan:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unknown plan")
     _, key_secret, _ = await razorpay.creds(db)
@@ -72,7 +75,7 @@ async def verify(body: VerifyPaymentIn, user: User = Depends(get_current_user),
             body.razorpay_order_id, body.razorpay_payment_id, body.razorpay_signature, key_secret):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Payment signature verification failed")
 
-    db.add(Payment(user_id=user.id, amount_inr=plan["price_inr"], status="captured",
+    db.add(Payment(user_id=user.id, amount_inr=float(plan.price_inr), status="captured",
                    razorpay_payment_id=body.razorpay_payment_id))
     sub = (await db.execute(select(Subscription).where(Subscription.user_id == user.id))).scalars().first()
     if sub is None:
@@ -83,7 +86,7 @@ async def verify(body: VerifyPaymentIn, user: User = Depends(get_current_user),
     sub.current_period_end = datetime.now(timezone.utc) + timedelta(days=30)
     user.subscription_tier = body.plan
     await ev.emit(db, "billing.subscription.activated", category="billing", user=user,
-                  payload={"plan": body.plan, "amount": plan["price_inr"]})
+                  payload={"plan": body.plan, "amount": float(plan.price_inr)})
     await db.commit()
     return {"ok": True, "tier": body.plan, "current_period_end": str(sub.current_period_end)}
 

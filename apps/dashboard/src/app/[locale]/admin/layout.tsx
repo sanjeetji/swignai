@@ -7,7 +7,7 @@ import { ThemeToggle, LanguageSwitcher } from "@swingai/ui";
 import { RequireAuth } from "../../../components/RequireAuth";
 
 const NAV = [
-  ["", "Overview"], ["users", "Users"], ["flags", "Feature Flags"],
+  ["", "Overview"], ["users", "Users"], ["plans", "Plans"], ["flags", "Feature Flags"],
   ["appearance", "Appearance"], ["integrations", "Integrations"], ["events", "Event Logs"],
 ];
 

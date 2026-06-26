@@ -123,6 +123,11 @@ export const api = {
   testIntegration: (token: string, provider: string) =>
     req<any>(`/api/admin/integrations/${provider}/test`, { method: "POST" }, token),
   rerunPipeline: (token: string) => req<any>("/api/admin/rerun-pipeline", { method: "POST" }, token),
+  adminPlans: (token: string) => req<{ plans: any[] }>("/api/admin/plans", {}, token),
+  upsertPlan: (token: string, slug: string, body: any) =>
+    req<any>(`/api/admin/plans/${encodeURIComponent(slug)}`, { method: "PUT", body: JSON.stringify(body) }, token),
+  deletePlan: (token: string, slug: string) =>
+    req<any>(`/api/admin/plans/${encodeURIComponent(slug)}`, { method: "DELETE" }, token),
   adminUserDetail: (token: string, id: string) => req<any>(`/api/admin/users/${id}`, {}, token),
   featureFlags: (token: string) => req<any>("/api/admin/feature-flags", {}, token),
   upsertFlag: (token: string, key: string, body: any) =>
