@@ -62,6 +62,10 @@ class PaperCloseIn(BaseModel):
     exit_reason: str | None = None
 
 
+class PaperTrailIn(BaseModel):
+    new_stop: float          # ratcheted-up stop; must be above the current stop
+
+
 # --- admin ---
 class AppearanceIn(BaseModel):
     default_theme_mode: str | None = None

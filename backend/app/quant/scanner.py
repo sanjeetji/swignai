@@ -11,6 +11,7 @@ from . import filters as filters_mod
 from . import regime as regime_mod
 from . import scorer as scorer_mod
 from .picker import _row_for_date
+from .risk import build_trade_plan
 
 
 def _trend_label(row: pd.Series) -> str:
@@ -28,7 +29,7 @@ def _trend_label(row: pd.Series) -> str:
 
 
 def scan_universe(date: pd.Timestamp, features: dict[str, pd.DataFrame],
-                  index_close: pd.Series, cfg: StrategyConfig) -> dict:
+                  index_close: pd.Series, cfg: StrategyConfig, capital: float = 100000.0) -> dict:
     reg = regime_mod.regime_for_date(index_close, date, cfg)
     rows: list[dict] = []
     for symbol, feat in features.items():
@@ -37,14 +38,21 @@ def scan_universe(date: pd.Timestamp, features: dict[str, pd.DataFrame],
             continue
         score, _ = scorer_mod.score_row(row, cfg)
         fr = filters_mod.passes_knockouts(row, cfg)
+        tp = build_trade_plan(row, capital, cfg) if fr.passed else None
         rows.append({
             "symbol": symbol[:-3] if symbol.upper().endswith(".NS") else symbol,
+            "price": round(float(row.get("close", 0.0) or 0), 2),
             "score": round(float(score), 1),
             "rel_strength": round(float(row.get("rel_strength", 0.0) or 0), 2),
             "trend": _trend_label(row),
             "vol_ratio": round(float(row.get("vol_ratio", 0.0) or 0), 2),
             "rsi": round(float(row.get("rsi", 0.0) or 0), 1),
             "valid_setup": bool(fr.passed),
+            "plan": None if tp is None else {
+                "entry": tp.entry, "stop": tp.stop, "target_1": tp.target_1,
+                "target_2": tp.target_2, "rr_ratio": tp.rr_ratio,
+                "quantity": tp.quantity, "position_size": tp.position_size,
+            },
         })
     rows.sort(key=lambda r: r["score"], reverse=True)
     return {"regime": reg, "results": rows}

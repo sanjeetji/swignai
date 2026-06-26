@@ -63,7 +63,7 @@ async def scan(min_score: float = 0, sector: str | None = None, regime_bias: str
         if index_close is None or len(index_close) == 0:
             return {"date": None, "regime": "unknown", "count": 0, "results": []}
         date = index_close.index[-1]
-        data = scan_universe(date, feats, index_close, DEFAULT)
+        data = scan_universe(date, feats, index_close, DEFAULT, settings.DEFAULT_CAPITAL)
         data["date"] = str(date.date())
         for r in data["results"]:
             r["sector"] = sector_for(r["symbol"])
