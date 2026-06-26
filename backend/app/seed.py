@@ -13,7 +13,7 @@ from .core.db import SessionLocal
 from .core.security import hash_password
 from .models.billing import Plan
 from .models.cms import CmsPage, CmsSection, StatMetric, Testimonial
-from .models.platform import FeatureFlag, PlatformSetting, ThemePreset
+from .models.platform import FeatureFlag, Integration, PlatformSetting, ThemePreset
 from .models.user import Permission, Role, RolePermission, User, UserRole
 
 PERMISSIONS = [
@@ -105,6 +105,19 @@ async def seed_if_empty() -> None:
                 ("ai_explanations", "Hinglish LLM explanations on picks (Layer 3)"),
             ]:
                 db.add(FeatureFlag(key=key, enabled=True, targeting={}, description=desc))
+
+        # --- integration slots (admin pastes keys in the Integrations tab; vault overrides .env) ---
+        # Idempotent per-provider: add any missing slot without touching configured ones.
+        slots = [
+            ("llm", "groq"), ("llm", "openrouter"), ("llm", "together"),
+            ("llm", "openai"), ("llm", "gemini"),
+            ("payments", "razorpay"),
+            ("data", "angelone"),
+        ]
+        have = set((await db.execute(select(Integration.provider))).scalars().all())
+        for category, provider in slots:
+            if provider not in have:
+                db.add(Integration(category=category, provider=provider, enabled=False, role="primary", config={}))
 
         # --- marketing content (seed, then admin-editable) ---
         if await _empty(db, CmsPage):
