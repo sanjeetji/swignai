@@ -35,3 +35,6 @@ logs/
 .run/
 *.db
 swingai_dev.db
+
+# DB backups (scripts/backup.sh)
+backups/
