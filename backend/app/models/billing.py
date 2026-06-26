@@ -20,6 +20,7 @@ class Plan(Base, TimestampMixin):
     price_inr: Mapped[float] = mapped_column(Numeric(12, 2))
     interval: Mapped[str] = mapped_column(String(12), default="month")       # month / year
     features: Mapped[list] = mapped_column(JSON, default=list)               # list[str]
+    trial_days: Mapped[int] = mapped_column(Integer, default=0)              # >0 = free trial plan
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_featured: Mapped[bool] = mapped_column(Boolean, default=False)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)

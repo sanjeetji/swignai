@@ -10,11 +10,10 @@ from datetime import datetime, timezone
 from sqlalchemy import func, select
 
 from .core.db import SessionLocal
-from .core.security import hash_password
 from .models.billing import Plan
 from .models.cms import CmsPage, CmsSection, StatMetric, Testimonial
 from .models.platform import FeatureFlag, Integration, PlatformSetting, ThemePreset
-from .models.user import Permission, Role, RolePermission, User, UserRole
+from .models.user import Permission, Role, RolePermission
 
 PERMISSIONS = [
     "users.read", "users.block", "users.impersonate", "roles.manage",
@@ -66,14 +65,8 @@ async def seed_if_empty() -> None:
                     db.add(RolePermission(role_id=role.id, permission_id=perms[k].id))
             await db.flush()
 
-        # --- super admin user (dev) ---
-        if await _empty(db, User):
-            admin = User(email="admin@swingai.in", name="Platform Owner",
-                         password_hash=hash_password("admin12345"), is_email_verified=True)
-            db.add(admin)
-            await db.flush()
-            sa = (await db.execute(select(Role).where(Role.name == "super_admin"))).scalar_one()
-            db.add(UserRole(user_id=admin.id, role_id=sa.id))
+        # NOTE: no demo super-admin is seeded. Create the first one interactively:
+        #   scripts/swingai.sh fresh   (or)   scripts/swingai.sh create-admin
 
         # --- platform settings + theme presets ---
         if await _empty(db, PlatformSetting):
@@ -87,8 +80,12 @@ async def seed_if_empty() -> None:
                 db.add(ThemePreset(name=name, label=label, tokens_light=light, tokens_dark=dark,
                                    sort_order=i))
 
-        # --- subscription plans (admin-editable; shown on marketing + dashboard) ---
+        # --- subscription plans (factory defaults; fully admin-editable afterwards) ---
         if await _empty(db, Plan):
+            db.add(Plan(slug="trial", name="Free Trial", price_inr=0, trial_days=30, sort_order=0,
+                        is_featured=False,
+                        features=["Full access for 30 days", "No card required",
+                                  "Daily picks + scanner + paper trading"]))
             db.add(Plan(slug="pro", name="Pro", price_inr=499, sort_order=1, is_featured=False,
                         features=["Daily picks + full scanner", "Paper trading + journal",
                                   "Personal analytics & alerts"]))
