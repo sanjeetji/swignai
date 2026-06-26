@@ -2,7 +2,7 @@
 // Event-log viewer with filters (blueprint/22). Unified stream; audit = admin+security.
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@swingai/api-client";
-import { Card } from "@swingai/ui";
+import { Card, Button } from "@swingai/ui";
 import { useAuth } from "../../../../lib/auth";
 
 const CATEGORIES = ["", "security", "admin", "system", "integration", "product", "data"];
@@ -28,10 +28,21 @@ export default function AdminEvents() {
     lvl === "critical" || lvl === "error" ? "text-destructive"
       : lvl === "warning" ? "text-warning" : "text-muted-foreground";
 
+  async function exportCsv() {
+    if (!token) return;
+    try {
+      const blob = await api.eventLogsExport(token, category || undefined, level || undefined);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = "event-logs.csv"; a.click();
+      URL.revokeObjectURL(url);
+    } catch {}
+  }
+
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">Event logs</h1>
-      <div className="flex gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <select value={category} onChange={(e) => setCategory(e.target.value)}
           className="rounded-md border border-border bg-background px-2 py-1 text-sm">
           {CATEGORIES.map((c) => <option key={c} value={c}>{c || "all categories"}</option>)}
@@ -40,6 +51,7 @@ export default function AdminEvents() {
           className="rounded-md border border-border bg-background px-2 py-1 text-sm">
           {LEVELS.map((l) => <option key={l} value={l}>{l || "all levels"}</option>)}
         </select>
+        <Button size="sm" variant="outline" onClick={exportCsv}>Export CSV</Button>
       </div>
       <Card className="divide-y divide-border">
         {events.map((e) => (

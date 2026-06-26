@@ -91,4 +91,21 @@ export const api = {
   testIntegration: (token: string, provider: string) =>
     req<any>(`/api/admin/integrations/${provider}/test`, { method: "POST" }, token),
   rerunPipeline: (token: string) => req<any>("/api/admin/rerun-pipeline", { method: "POST" }, token),
+  adminUserDetail: (token: string, id: string) => req<any>(`/api/admin/users/${id}`, {}, token),
+  featureFlags: (token: string) => req<any>("/api/admin/feature-flags", {}, token),
+  upsertFlag: (token: string, key: string, body: any) =>
+    req<any>(`/api/admin/feature-flags/${encodeURIComponent(key)}`, { method: "PUT", body: JSON.stringify(body) }, token),
+  deleteFlag: (token: string, key: string) =>
+    req<any>(`/api/admin/feature-flags/${encodeURIComponent(key)}`, { method: "DELETE" }, token),
+  // CSV download — needs the auth header, so fetch as a blob (not a plain <a href>)
+  eventLogsExport: async (token: string, category?: string, level?: string): Promise<Blob> => {
+    const q = new URLSearchParams();
+    if (category) q.set("category", category);
+    if (level) q.set("level", level);
+    const res = await fetch(`${API_BASE}/api/admin/event-logs/export?${q.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error(`export ${res.status}`);
+    return res.blob();
+  },
 };
