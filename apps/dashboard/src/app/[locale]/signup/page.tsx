@@ -11,7 +11,7 @@ export default function SignupPage() {
   const t = useTranslations();
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
-  const setToken = useAuth((s) => s.setToken);
+  const setSession = useAuth((s) => s.setSession);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,8 +21,8 @@ export default function SignupPage() {
     e.preventDefault();
     setError(null);
     try {
-      const { access_token } = await api.register(email, password, name || undefined);
-      setToken(access_token);
+      const tk = await api.register(email, password, name || undefined);
+      setSession(tk.access_token, tk.refresh_token);
       router.push(`/${locale}/dashboard`);
     } catch (e: any) {
       setError(String(e?.message || "").includes("409") ? t("auth.exists") : t("auth.invalid"));

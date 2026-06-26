@@ -1,35 +1,56 @@
 "use client";
-// Minimal client auth store for the scaffold (token in localStorage). Production
-// upgrades to Supabase Auth / httpOnly cookies + middleware session check (blueprint/19).
+// Client auth store: JWT access + refresh in localStorage. Access is short-lived; on
+// app load a stored refresh token is exchanged for a fresh access token so returning
+// users stay signed in. Logout revokes the server session too (blueprint/19).
 import { create } from "zustand";
+import { api } from "@swingai/api-client";
 
-const KEY = "swingai_token";
+const ACCESS = "swingai_token";
+const REFRESH = "swingai_refresh";
 
 interface AuthState {
   token: string | null;
-  loaded: boolean;            // has localStorage been read yet? (distinguishes "no token" from "not loaded")
-  setToken: (t: string | null) => void;
+  refresh: string | null;
+  loaded: boolean;            // has localStorage been read yet?
+  setSession: (access: string | null, refresh?: string | null) => void;
+  setToken: (t: string | null) => void;   // kept for back-compat callers
   load: () => void;
   logout: () => void;
 }
 
-export const useAuth = create<AuthState>((set) => ({
+function persist(access: string | null, refresh: string | null | undefined) {
+  if (typeof window === "undefined") return;
+  if (access) localStorage.setItem(ACCESS, access); else localStorage.removeItem(ACCESS);
+  if (refresh !== undefined) {
+    if (refresh) localStorage.setItem(REFRESH, refresh); else localStorage.removeItem(REFRESH);
+  }
+}
+
+export const useAuth = create<AuthState>((set, get) => ({
   token: null,
+  refresh: null,
   loaded: false,
-  setToken: (t) => {
-    if (typeof window !== "undefined") {
-      if (t) localStorage.setItem(KEY, t);
-      else localStorage.removeItem(KEY);
-    }
-    set({ token: t });
+  setSession: (access, refresh) => {
+    persist(access, refresh);
+    set({ token: access, ...(refresh !== undefined ? { refresh } : {}) });
   },
+  setToken: (t) => { persist(t, undefined); set({ token: t }); },
   load: () => {
-    if (typeof window !== "undefined") {
-      set({ token: localStorage.getItem(KEY), loaded: true });
+    if (typeof window === "undefined") return;
+    const access = localStorage.getItem(ACCESS);
+    const refresh = localStorage.getItem(REFRESH);
+    set({ token: access, refresh, loaded: true });
+    // self-heal an expired access token from a still-valid refresh token
+    if (refresh) {
+      api.refresh(refresh)
+        .then((tk) => { persist(tk.access_token, tk.refresh_token ?? refresh); set({ token: tk.access_token }); })
+        .catch(() => {});   // refresh invalid/expired — keep whatever access we had (or none)
     }
   },
   logout: () => {
-    if (typeof window !== "undefined") localStorage.removeItem(KEY);
-    set({ token: null });
+    const { token } = get();
+    if (token) api.logout(token);              // best-effort server-side session revoke
+    persist(null, null);
+    set({ token: null, refresh: null });
   },
 }));

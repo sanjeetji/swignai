@@ -11,7 +11,7 @@ export default function LoginPage() {
   const t = useTranslations();
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
-  const setToken = useAuth((s) => s.setToken);
+  const setSession = useAuth((s) => s.setSession);
   const [email, setEmail] = useState("admin@swingai.in");
   const [password, setPassword] = useState("admin12345");
   const [error, setError] = useState<string | null>(null);
@@ -20,8 +20,8 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     try {
-      const { access_token } = await api.login(email, password);
-      setToken(access_token);
+      const tk = await api.login(email, password);
+      setSession(tk.access_token, tk.refresh_token);
       router.push(`/${locale}/dashboard`);
     } catch {
       setError(t("auth.invalid"));
@@ -43,9 +43,14 @@ export default function LoginPage() {
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button type="submit" className="w-full">{t("auth.submit")}</Button>
         </form>
-        <Link href={`/${locale}/signup`} className="mt-4 block text-center text-sm text-muted-foreground hover:underline">
-          {t("auth.noAccount")}
-        </Link>
+        <div className="mt-4 flex items-center justify-between text-sm">
+          <Link href={`/${locale}/signup`} className="text-muted-foreground hover:underline">
+            {t("auth.noAccount")}
+          </Link>
+          <Link href={`/${locale}/forgot-password`} className="text-muted-foreground hover:underline">
+            {t("auth.forgot")}
+          </Link>
+        </div>
       </Card>
     </main>
   );

@@ -4,6 +4,12 @@
 export const API_BASE =
   (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_BASE) || "http://localhost:9000";
 
+export interface Tokens {
+  access_token: string;
+  refresh_token?: string;
+  token_type?: string;
+}
+
 export interface Brand {
   name: string; shortName: string; legalName: string;
   tagline: string; domain: string; supportEmail: string;
@@ -55,9 +61,16 @@ export const api = {
 
   // auth
   register: (email: string, password: string, name?: string) =>
-    req<{ access_token: string }>("/api/auth/register", { method: "POST", body: JSON.stringify({ email, password, name }) }),
+    req<Tokens>("/api/auth/register", { method: "POST", body: JSON.stringify({ email, password, name }) }),
   login: (email: string, password: string) =>
-    req<{ access_token: string }>("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+    req<Tokens>("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+  refresh: (refresh_token: string) =>
+    req<Tokens>("/api/auth/refresh", { method: "POST", body: JSON.stringify({ refresh_token }) }),
+  logout: (token: string) => req<any>("/api/auth/logout", { method: "POST" }, token).catch(() => null),
+  forgotPassword: (email: string) =>
+    req<{ ok: boolean; message: string; dev_token?: string }>("/api/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) }),
+  resetPassword: (token: string, new_password: string) =>
+    req<Tokens>("/api/auth/reset-password", { method: "POST", body: JSON.stringify({ token, new_password }) }),
   me: (token: string) => req<any>("/api/auth/me", {}, token),
 
   // user

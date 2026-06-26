@@ -1,11 +1,28 @@
 {
-  "brand": { "name": "SwingAI" },
-  "nav": { "dashboard": "Dashboard", "analyze": "Analyze", "journal": "Journal", "logout": "Logout", "admin": "Admin" },
+  "brand": {
+    "name": "SwingAI"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "analyze": "Analyze",
+    "journal": "Journal",
+    "logout": "Logout",
+    "admin": "Admin"
+  },
   "journal": {
-    "title": "Trade Journal", "review": "Post-trade review", "discipline": "Discipline score",
-    "noReview": "Close some paper trades to see your review.", "noTrades": "No trades yet — paper trade a pick to start.",
-    "close": "Close", "closing": "Closing…", "exitPrice": "Exit price", "reason": "Reason (optional)",
-    "open": "Open", "win": "Win", "loss": "Loss", "scratch": "Scratch"
+    "title": "Trade Journal",
+    "review": "Post-trade review",
+    "discipline": "Discipline score",
+    "noReview": "Close some paper trades to see your review.",
+    "noTrades": "No trades yet — paper trade a pick to start.",
+    "close": "Close",
+    "closing": "Closing…",
+    "exitPrice": "Exit price",
+    "reason": "Reason (optional)",
+    "open": "Open",
+    "win": "Win",
+    "loss": "Loss",
+    "scratch": "Scratch"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -15,9 +32,17 @@
     "positionSizing": "Position sizing",
     "cashMode": "Cash mode — no picks today (regime gate). Capital preserved.",
     "noClosedTrades": "No closed trades yet — your honest stats appear here.",
-    "expectancy": "Expectancy (R)", "winRate": "Win rate", "profitFactor": "Profit factor", "trades": "Trades",
-    "capital": "Capital", "open": "Open", "heat": "Heat",
-    "paperTrade": "Paper trade this", "placing": "Placing…", "tradeOpened": "Paper trade opened", "tradeFailed": "Could not place trade"
+    "expectancy": "Expectancy (R)",
+    "winRate": "Win rate",
+    "profitFactor": "Profit factor",
+    "trades": "Trades",
+    "capital": "Capital",
+    "open": "Open",
+    "heat": "Heat",
+    "paperTrade": "Paper trade this",
+    "placing": "Placing…",
+    "tradeOpened": "Paper trade opened",
+    "tradeFailed": "Could not place trade"
   },
   "analyze": {
     "title": "Analyze a stock",
@@ -27,11 +52,36 @@
     "error": "No analysis available for that symbol (need enough price history)."
   },
   "auth": {
-    "login": "Log in", "signup": "Create account", "email": "Email", "password": "Password",
-    "name": "Name", "submit": "Log in", "submitSignup": "Sign up",
-    "noAccount": "New here? Create an account", "haveAccount": "Already have an account? Log in",
-    "invalid": "Invalid email or password", "exists": "That email is already registered"
+    "login": "Log in",
+    "signup": "Create account",
+    "email": "Email",
+    "password": "Password",
+    "name": "Name",
+    "submit": "Log in",
+    "submitSignup": "Sign up",
+    "noAccount": "New here? Create an account",
+    "haveAccount": "Already have an account? Log in",
+    "invalid": "Invalid email or password",
+    "exists": "That email is already registered",
+    "forgot": "Forgot password?",
+    "sendReset": "Send reset link",
+    "resetSent": "If that email exists, we’ve sent a reset link. Check your inbox.",
+    "devResetLink": "Open reset link (dev)",
+    "backToLogin": "Back to log in",
+    "resetTitle": "Set a new password",
+    "resetNoToken": "Missing or invalid reset link.",
+    "newPassword": "New password",
+    "resetSubmit": "Reset password",
+    "resetInvalid": "This reset link is invalid or has expired."
   },
-  "admin": { "title": "Admin", "users": "Users", "events": "Event Logs" },
-  "common": { "disclaimer": "Educational analysis only — not investment advice.", "loading": "Loading…", "language": "Language" }
+  "admin": {
+    "title": "Admin",
+    "users": "Users",
+    "events": "Event Logs"
+  },
+  "common": {
+    "disclaimer": "Educational analysis only — not investment advice.",
+    "loading": "Loading…",
+    "language": "Language"
+  }
 }
