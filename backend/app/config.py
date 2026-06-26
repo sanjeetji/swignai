@@ -20,7 +20,9 @@ class StrategyConfig:
     weekly_ema: int = 20                 # weekly tide (computed on resampled weekly closes)
     daily_trend_ema: int = 50            # price must be above this
     slope_ema: int = 20                  # this EMA must be sloping up
-    max_extension_pct: float = 8.0       # reject if price > X% above slope_ema
+    # tightened from 8→4 after walk-forward research (blueprint/05): chasing over-extended
+    # entries was the main bull-regime bleed; ≤4% above EMA20 generalises materially better.
+    max_extension_pct: float = 4.0       # reject if price > X% above slope_ema
     atr_period: int = 14
     atr_min_pct: float = 1.5             # volatility floor (% of price)
     atr_max_pct: float = 5.0             # volatility ceiling
@@ -37,7 +39,7 @@ class StrategyConfig:
     # indicator params used by the score
     rsi_period: int = 14
     rsi_low: float = 50.0                # momentum sweet spot
-    rsi_high: float = 65.0
+    rsi_high: float = 60.0               # lowered 65→60 (walk-forward): avoid overbought chases
     macd_fast: int = 12
     macd_slow: int = 26
     macd_signal: int = 9
