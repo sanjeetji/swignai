@@ -43,6 +43,7 @@ class UserOut(BaseModel):
     capital_amount: float
     risk_pct: float
     subscription_tier: str
+    two_factor_enabled: bool = False
     roles: list[str] = []
     permissions: list[str] = []
 

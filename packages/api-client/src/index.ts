@@ -71,6 +71,9 @@ export const api = {
   register: (email: string, password: string, name?: string, referral_code?: string) =>
     req<Tokens>("/api/auth/register", { method: "POST", body: JSON.stringify({ email, password, name, referral_code }) }),
   referral: (token: string) => req<{ code: string; count: number; referred: any[] }>("/api/me/referral", {}, token).catch(() => ({ code: "", count: 0, referred: [] })),
+  twoFactorSetup: (token: string) => req<{ secret: string; otpauth_uri: string }>("/api/me/2fa/setup", { method: "POST" }, token),
+  twoFactorVerify: (token: string, code: string) => req<any>("/api/me/2fa/verify", { method: "POST", body: JSON.stringify({ code }) }, token),
+  twoFactorDisable: (token: string) => req<any>("/api/me/2fa/disable", { method: "POST" }, token),
   login: (email: string, password: string) =>
     req<Tokens>("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
   refresh: (refresh_token: string) =>

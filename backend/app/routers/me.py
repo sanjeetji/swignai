@@ -74,6 +74,15 @@ async def totp_verify(body: TotpVerifyIn, user: User = Depends(get_current_user)
     return {"enabled": True}
 
 
+@router.post("/2fa/disable")
+async def totp_disable(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    user.totp_enabled = False
+    user.totp_secret = None
+    await ev.security(db, "auth.2fa.disabled", level="warning", user=user)
+    await db.commit()
+    return {"enabled": False}
+
+
 # ---------------- sessions ----------------
 @router.get("/sessions")
 async def my_sessions(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):

@@ -3,8 +3,8 @@
 // Live: changes apply instantly via the theme system and persist (localStorage override).
 import { useCallback, useEffect, useState } from "react";
 import { useTheme } from "next-themes";
-import { Sun, Moon, Monitor, Palette, Check, Type, Gift, Copy } from "lucide-react";
-import { useThemeControls, FONTS, Card } from "@swingai/ui";
+import { Sun, Moon, Monitor, Palette, Check, Type, Gift, Copy, ShieldCheck } from "lucide-react";
+import { useThemeControls, FONTS, Card, Button } from "@swingai/ui";
 import { api } from "@swingai/api-client";
 import { useAuth } from "../../../lib/auth";
 import { DashboardShell } from "../../../components/DashboardShell";
@@ -22,10 +22,21 @@ function SettingsInner() {
   const [mounted, setMounted] = useState(false);
   const [ref, setRef] = useState<any>(null);
   const [copied, setCopied] = useState(false);
+  const [me, setMe] = useState<any>(null);
+  const [tfa, setTfa] = useState<{ secret?: string; code: string; msg?: string }>({ code: "" });
   useEffect(() => setMounted(true), []);
 
   const loadRef = useCallback(() => { if (token) api.referral(token).then(setRef).catch(() => {}); }, [token]);
-  useEffect(() => { loadRef(); }, [loadRef]);
+  const loadMe = useCallback(() => { if (token) api.me(token).then(setMe).catch(() => {}); }, [token]);
+  useEffect(() => { loadRef(); loadMe(); }, [loadRef, loadMe]);
+
+  async function tfaSetup() { if (token) { const r = await api.twoFactorSetup(token); setTfa({ secret: r.secret, code: "" }); } }
+  async function tfaVerify() {
+    if (!token) return;
+    try { await api.twoFactorVerify(token, tfa.code.trim()); setTfa({ code: "", msg: "Two-factor enabled ✓" }); loadMe(); }
+    catch { setTfa((s) => ({ ...s, msg: "Invalid code, try again" })); }
+  }
+  async function tfaDisable() { if (token) { await api.twoFactorDisable(token); setTfa({ code: "" }); loadMe(); } }
 
   if (!mounted) return null;
 
@@ -104,6 +115,33 @@ function SettingsInner() {
               })}
             </div>
             <p className="mt-2 text-xs text-muted-foreground">Your choices are saved to this device. Admins set the platform default.</p>
+          </div>
+        )}
+      </Card>
+
+      {/* two-factor auth */}
+      <Card className="p-6">
+        <div className="mb-1 flex items-center gap-2 font-semibold"><ShieldCheck size={18} className="text-primary" /> Two-factor authentication</div>
+        {me?.two_factor_enabled ? (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-success">2FA is on — your account is protected by an authenticator app.</p>
+            <Button size="sm" variant="outline" onClick={tfaDisable}>Disable 2FA</Button>
+          </div>
+        ) : tfa.secret ? (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Add this key to Google Authenticator / Authy, then enter the 6-digit code to enable.</p>
+            <code className="block break-all rounded-lg bg-muted px-3 py-2 text-sm font-semibold tracking-wider">{tfa.secret}</code>
+            <div className="flex flex-wrap items-center gap-2">
+              <input value={tfa.code} onChange={(e) => setTfa((s) => ({ ...s, code: e.target.value }))} placeholder="123456" inputMode="numeric"
+                className="w-32 rounded-lg border border-border bg-background px-3 py-2 text-sm tracking-widest" />
+              <Button size="sm" onClick={tfaVerify}>Verify &amp; enable</Button>
+              {tfa.msg && <span className="text-xs text-muted-foreground">{tfa.msg}</span>}
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">Add a second layer of security with an authenticator app (TOTP).</p>
+            <Button size="sm" onClick={tfaSetup}>Enable 2FA</Button>
           </div>
         )}
       </Card>

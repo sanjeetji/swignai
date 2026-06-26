@@ -200,7 +200,7 @@ async def me(user: User = Depends(get_current_user), db: AsyncSession = Depends(
     return UserOut(
         id=str(user.id), email=user.email, name=user.name,
         capital_amount=float(user.capital_amount), risk_pct=float(user.risk_pct),
-        subscription_tier=user.subscription_tier,
+        subscription_tier=user.subscription_tier, two_factor_enabled=bool(user.totp_enabled),
         roles=await user_roles(db, user),
         permissions=sorted(await user_permissions(db, user)),
     )
