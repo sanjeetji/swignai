@@ -13,8 +13,8 @@ export default function LoginPage() {
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
   const setSession = useAuth((s) => s.setSession);
-  const [email, setEmail] = useState("admin@swingai.in");
-  const [password, setPassword] = useState("admin12345");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   async function submit(e: React.FormEvent) {
