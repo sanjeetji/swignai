@@ -169,27 +169,71 @@ async def sectors():
     return {"sectors": m, "count": len(m)}
 
 
-@router.get("/api/scan")
-async def scan(min_score: float = 0, sector: str | None = None, regime_bias: str | None = None):
-    """Scan the whole tradeable universe and rank by score (blueprint/04) — the screener.
-    Cached per day in Redis; filters (min score / sector / regime bias) applied server-side."""
-    cache_key = "scan:latest"
-    cached = await cache_get(cache_key)
-    if cached:
-        data = json.loads(cached)
-    else:
+# Universe tiers the user can scan (top-N by market cap from the NIFTY 500 list, which is
+# ordered large→mid). "nifty500" = the whole list. Default tier is the fast nifty50.
+SCAN_TIERS = {"nifty50": 50, "nifty100": 100, "nifty150": 150, "nifty200": 200,
+              "nifty250": 250, "nifty300": 300, "nifty500": 100000}
+_scan_jobs: set[str] = set()   # tiers currently being scanned (in-process guard)
+
+
+def _tier_symbols(tier: str) -> list[str]:
+    from ..data.nifty500 import NIFTY_500
+    return NIFTY_500[: SCAN_TIERS.get(tier, 50)]
+
+
+async def _scan_tier_bg(tier: str):
+    """Background: scan exactly the tier's symbols and cache the ranked result."""
+    _scan_jobs.add(tier)
+    try:
         from ..quant.scanner import scan_universe
         provider = get_provider(settings.DATA_PROVIDER,
                                 **({"days": 600} if settings.DATA_PROVIDER == "synthetic" else {}))
+        try:
+            provider.universe = _tier_symbols(tier)   # scope the provider to this tier
+        except Exception:
+            pass
         feats, index_close = _load_features(provider)
         if index_close is None or len(index_close) == 0:
-            return {"date": None, "regime": "unknown", "count": 0, "results": []}
+            return
         date = index_close.index[-1]
         data = scan_universe(date, feats, index_close, DEFAULT, settings.DEFAULT_CAPITAL)
         data["date"] = str(date.date())
         for r in data["results"]:
             r["sector"] = sector_for(r["symbol"])
-        await cache_set(cache_key, json.dumps(data), ttl=60 * 60 * 6)
+        await cache_set(f"scan:tier:{tier}", json.dumps(data), ttl=60 * 60 * 12)
+    except Exception:
+        logging.getLogger("picks").exception("tier scan failed: %s", tier)
+    finally:
+        _scan_jobs.discard(tier)
+
+
+@router.get("/api/scan")
+async def scan(min_score: float = 0, sector: str | None = None, regime_bias: str | None = None,
+               universe: str = "nifty50"):
+    """Screen a chosen NIFTY tier (nifty50…nifty500) and rank by score (blueprint/04).
+    Smaller tiers derive instantly from a cached larger scan (incl. the daily full scan);
+    otherwise the tier is scanned in the background and the client polls (`scanning: true`)."""
+    tier = universe if universe in SCAN_TIERS else "nifty50"
+    tier_syms = set(_tier_symbols(tier))
+    data = None
+
+    cached = await cache_get(f"scan:tier:{tier}")
+    if cached:
+        data = json.loads(cached)
+    else:
+        # derive from the daily full scan if present (covers every tier instantly)
+        full = await cache_get("scan:latest")
+        if full:
+            fd = json.loads(full)
+            data = {**fd, "results": [r for r in fd["results"] if r["symbol"] in tier_syms]}
+
+    if data is None:
+        # nothing cached for this tier → kick off a background scan and tell the client to poll
+        if tier not in _scan_jobs:
+            import asyncio
+            asyncio.create_task(_scan_tier_bg(tier))
+        return {"scanning": True, "universe": tier, "date": None, "regime": "unknown",
+                "count": 0, "results": []}
 
     results = data["results"]
     if min_score:
@@ -200,7 +244,8 @@ async def scan(min_score: float = 0, sector: str | None = None, regime_bias: str
         results = [r for r in results if r["trend"] in ("Strong Up", "Up")]
     elif regime_bias == "valid":
         results = [r for r in results if r.get("valid_setup")]
-    return {"date": data.get("date"), "regime": data.get("regime"), "count": len(results), "results": results}
+    return {"scanning": False, "universe": tier, "date": data.get("date"),
+            "regime": data.get("regime"), "count": len(results), "results": results}
 
 
 def _load_features(provider):

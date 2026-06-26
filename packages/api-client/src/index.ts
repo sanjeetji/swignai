@@ -107,12 +107,13 @@ export const api = {
       `/api/daily-picks/refresh?force=${force}`, { method: "POST" }, token),
   universe: () => req<{ symbols: string[]; count: number }>("/api/universe").catch(() => ({ symbols: [], count: 0 })),
   sectors: () => req<{ sectors: Record<string, string[]>; count: number }>("/api/sectors").catch(() => ({ sectors: {} as Record<string, string[]>, count: 0 })),
-  scan: (params?: { min_score?: number; sector?: string; regime_bias?: string }) => {
+  scan: (params?: { min_score?: number; sector?: string; regime_bias?: string; universe?: string }) => {
     const q = new URLSearchParams();
     if (params?.min_score) q.set("min_score", String(params.min_score));
     if (params?.sector) q.set("sector", params.sector);
     if (params?.regime_bias) q.set("regime_bias", params.regime_bias);
-    return req<{ date: string; regime: string; count: number; results: any[] }>(`/api/scan?${q.toString()}`);
+    q.set("universe", params?.universe || "nifty50");
+    return req<{ scanning?: boolean; universe?: string; date: string; regime: string; count: number; results: any[] }>(`/api/scan?${q.toString()}`);
   },
   cmsPage: (slug: string, locale = "en") => req<any>(`/api/cms/page/${slug}?locale=${locale}`),
   stockAnalysis: (symbol: string) => req<any>(`/api/stocks/${encodeURIComponent(symbol)}`),

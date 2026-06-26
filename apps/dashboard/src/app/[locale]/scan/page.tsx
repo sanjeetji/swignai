@@ -18,6 +18,12 @@ const MIN_SCORES = [
 const BIAS = [
   { v: "", label: "All setups" }, { v: "valid", label: "Valid setups only" }, { v: "bullish", label: "Bullish trend only" },
 ];
+const UNIVERSES = [
+  { v: "nifty50", label: "Nifty 50", n: 50 }, { v: "nifty100", label: "Nifty 100", n: 100 },
+  { v: "nifty150", label: "Nifty 150", n: 150 }, { v: "nifty200", label: "Nifty 200", n: 200 },
+  { v: "nifty250", label: "Nifty 250", n: 250 }, { v: "nifty300", label: "Nifty 300", n: 300 },
+  { v: "nifty500", label: "Nifty 500", n: 500 },
+];
 
 function trendCls(t: string) {
   return t === "Strong Up" ? "bg-success/15 text-success" : t === "Up" ? "bg-success/10 text-success"
@@ -29,6 +35,8 @@ function ScanInner() {
   const token = useAuth((s) => s.token);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [scanning, setScanning] = useState(false);
+  const [universe, setUniverse] = useState("nifty50");
   const [minScore, setMinScore] = useState(0);
   const [bias, setBias] = useState("");
   const [sector, setSector] = useState("");
@@ -39,11 +47,24 @@ function ScanInner() {
     if (token) api.portfolio(token).then((p) => setHeld(new Set((p.trades || []).map((t: any) => t.symbol)))).catch(() => {});
   }, [token]);
 
-  const run = useCallback(() => {
-    setLoading(true);
-    api.scan({ min_score: minScore || undefined, sector: sector || undefined, regime_bias: bias || undefined })
-      .then(setData).catch(() => setData(null)).finally(() => setLoading(false));
-  }, [minScore, sector, bias]);
+  const run = useCallback(async () => {
+    setLoading(true); setScanning(false);
+    const q = { min_score: minScore || undefined, sector: sector || undefined, regime_bias: bias || undefined, universe };
+    let d = await api.scan(q).catch(() => null);
+    setData(d);
+    // A tier that isn't cached yet is scanned in the background — poll until results land.
+    if (d?.scanning) {
+      setScanning(true);
+      const maxPolls = universe === "nifty500" ? 110 : universe === "nifty50" ? 18 : 60;
+      for (let i = 0; i < maxPolls; i++) {
+        await new Promise((r) => setTimeout(r, 4000));
+        d = await api.scan(q).catch(() => null);
+        if (d && !d.scanning) { setData(d); break; }
+      }
+      setScanning(false);
+    }
+    setLoading(false);
+  }, [minScore, sector, bias, universe]);
 
   useEffect(() => { api.sectors().then((r) => setSectors(Object.keys(r.sectors))).catch(() => {}); }, []);
   useEffect(() => { run(); }, [run]);
@@ -55,7 +76,7 @@ function ScanInner() {
     <div className="space-y-5">
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Radar className="text-primary" size={18} />
-        <span>Screening <span className="font-medium text-foreground">{data?.count ?? "…"}</span> NSE stocks for valid swing setups</span>
+        <span>Screening the <span className="font-medium text-foreground">{UNIVERSES.find((u) => u.v === universe)?.label}</span> — <span className="font-medium text-foreground">{data?.count ?? "…"}</span> stocks ranked for swing setups</span>
       </div>
 
       <RegimeBanner regime={data?.regime}
@@ -63,6 +84,11 @@ function ScanInner() {
           : data?.regime === "bear" ? "Bearish regime — capital-preservation mode." : undefined} />
 
       <Card className="flex flex-wrap items-end gap-3 p-4">
+        <label className="flex flex-col gap-1 text-xs text-muted-foreground">Universe
+          <select className={selCls} value={universe} onChange={(e) => setUniverse(e.target.value)}>
+            {UNIVERSES.map((u) => <option key={u.v} value={u.v}>{u.label}</option>)}
+          </select>
+        </label>
         <label className="flex flex-col gap-1 text-xs text-muted-foreground">Min AI score
           <select className={selCls} value={minScore} onChange={(e) => setMinScore(Number(e.target.value))}>
             {MIN_SCORES.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
@@ -82,7 +108,16 @@ function ScanInner() {
         <Button onClick={run} className="ml-auto"><Radar size={15} className="mr-1.5" /> Run scan</Button>
       </Card>
 
-      {loading ? (
+      {loading && scanning ? (
+        <Card className="flex flex-col items-center gap-3 py-14 text-center">
+          <div className="h-9 w-9 animate-spin rounded-full border-2 border-muted border-t-primary" />
+          <div className="text-sm font-medium">Scanning the {UNIVERSES.find((u) => u.v === universe)?.label}…</div>
+          <div className="max-w-md text-xs text-muted-foreground">
+            Running the deterministic screener across {UNIVERSES.find((u) => u.v === universe)?.n} NSE stocks on live prices.
+            {universe === "nifty500" ? " The full scan takes a few minutes — smaller universes finish faster." : " This takes a moment."}
+          </div>
+        </Card>
+      ) : loading ? (
         <div className="space-y-2">{[0, 1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-12" />)}</div>
       ) : (
         <Card className="overflow-hidden p-0">

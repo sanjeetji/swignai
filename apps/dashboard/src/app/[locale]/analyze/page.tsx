@@ -43,10 +43,18 @@ function AnalyzeInner() {
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [portfolio, setPortfolio] = useState<any>(null);
+  const [allSymbols, setAllSymbols] = useState<string[]>([]);
+  const [showList, setShowList] = useState(false);
 
   const loadPortfolio = useCallback(() => {
     if (token) api.portfolio(token).then(setPortfolio).catch(() => {});
   }, [token]);
+
+  // Full NIFTY 500 symbol list for the autocomplete.
+  useEffect(() => { api.universe().then((r) => setAllSymbols(r.symbols || [])).catch(() => {}); }, []);
+  const matches = (symbol.trim()
+    ? allSymbols.filter((s) => s.includes(symbol.trim().toUpperCase()))
+    : allSymbols).slice(0, 12);
 
   const run = useCallback(async (sym: string) => {
     if (!sym.trim()) return;
@@ -64,9 +72,26 @@ function AnalyzeInner() {
 
   return (
     <div className="space-y-6">
-      <form onSubmit={(e) => { e.preventDefault(); run(symbol); }} className="flex gap-2">
-        <input value={symbol} onChange={(e) => setSymbol(e.target.value.toUpperCase())} placeholder={t("analyze.placeholder")}
-          className="flex-1 rounded-lg border border-border bg-background/60 px-4 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
+      <form onSubmit={(e) => { e.preventDefault(); setShowList(false); run(symbol); }} className="flex gap-2">
+        <div className="relative flex-1">
+          <input value={symbol}
+            onChange={(e) => { setSymbol(e.target.value.toUpperCase()); setShowList(true); }}
+            onFocus={() => setShowList(true)}
+            onBlur={() => setTimeout(() => setShowList(false), 150)}
+            placeholder={t("analyze.placeholder")} autoComplete="off"
+            className="w-full rounded-lg border border-border bg-background/60 px-4 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          {showList && matches.length > 0 && (
+            <div className="absolute z-30 mt-1 max-h-72 w-full overflow-auto rounded-lg border border-border bg-card shadow-lg">
+              {matches.map((s) => (
+                <button type="button" key={s}
+                  onMouseDown={() => { setSymbol(s); setShowList(false); run(s); }}
+                  className={`block w-full px-4 py-2 text-left text-sm hover:bg-muted ${s === symbol ? "bg-muted font-medium" : ""}`}>
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <Button type="submit" disabled={busy}><Search size={15} className="mr-1.5" />{busy ? t("analyze.analyzing") : t("analyze.button")}</Button>
       </form>
       {err && <Card className="p-5 text-sm text-destructive">{err}</Card>}

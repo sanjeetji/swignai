@@ -86,7 +86,6 @@ async def run() -> dict:
     # Populate the scanner's cache (same shape /api/scan caches) from the SAME features we just
     # fetched, so the scanner page is instant — no separate ~500-symbol recompute on first open.
     try:
-        from ..data.sectors import sector_for
         from ..quant.scanner import scan_universe
         scan_data = scan_universe(date, feats, index_close, DEFAULT, settings.DEFAULT_CAPITAL)
         scan_data["date"] = str(date.date())
