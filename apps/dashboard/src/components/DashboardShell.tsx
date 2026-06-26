@@ -11,6 +11,7 @@ import { ThemeToggle, LanguageSwitcher } from "@swingai/ui";
 import { api } from "@swingai/api-client";
 import { useAuth } from "../lib/auth";
 import { RequireAuth } from "./RequireAuth";
+import { NotificationBell } from "./NotificationBell";
 
 type NavItem = { slug: string; label: string; Icon: typeof LayoutDashboard; admin?: boolean };
 
@@ -60,7 +61,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
         </nav>
         <div className="space-y-3 border-t border-border p-3">
           <div className="flex items-center justify-between px-1">
-            <LanguageSwitcher /><ThemeToggle />
+            <NotificationBell /><LanguageSwitcher /><ThemeToggle />
           </div>
           {me?.email && <div className="truncate px-1 text-xs text-muted-foreground" title={me.email}>{me.email}</div>}
           <button onClick={doLogout}
@@ -77,7 +78,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
           <span className="font-semibold">SwingAI</span>
         </div>
         <div className="flex items-center gap-1">
-          <LanguageSwitcher /><ThemeToggle />
+          <NotificationBell /><LanguageSwitcher /><ThemeToggle />
           <button onClick={doLogout} className="ml-1 rounded-md p-2 text-muted-foreground hover:bg-muted" aria-label={t("nav.logout")}>
             <LogOut size={18} />
           </button>

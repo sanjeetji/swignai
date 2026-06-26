@@ -79,6 +79,9 @@ export const api = {
   resetPassword: (token: string, new_password: string) =>
     req<Tokens>("/api/auth/reset-password", { method: "POST", body: JSON.stringify({ token, new_password }) }),
   me: (token: string) => req<any>("/api/auth/me", {}, token),
+  notifications: (token: string) => req<{ unread: number; notifications: any[] }>("/api/notifications", {}, token).catch(() => ({ unread: 0, notifications: [] })),
+  readNotification: (token: string, id: string) => req<any>(`/api/notifications/${id}/read`, { method: "POST" }, token).catch(() => null),
+  readAllNotifications: (token: string) => req<any>("/api/notifications/read-all", { method: "POST" }, token).catch(() => null),
 
   // user
   analytics: (token: string) => req<any>("/api/analytics", {}, token),

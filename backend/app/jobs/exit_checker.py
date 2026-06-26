@@ -15,6 +15,7 @@ from ..core.db import SessionLocal
 from ..data.factory import get_provider
 from ..models.trading import PaperTrade
 from ..services import event_log as ev
+from ..services.notify import push as push_notification
 
 logger = logging.getLogger("exit_checker")
 
@@ -58,6 +59,10 @@ async def run() -> dict:
             t.status = ("scratch" if abs(pnl_pct) < 0.5
                         else "closed_profit" if pnl > 0 else "closed_loss")
             t.exit_reason = hit
+            await push_notification(db, t.user_id, f"trade.{hit}", {
+                "symbol": t.stock_symbol, "exit": round(exit_px, 2),
+                "pnl_inr": round(pnl, 2), "r_multiple": round(t.r_multiple or 0, 2), "outcome": t.status,
+            })
             closed += 1
         if closed:
             await ev.system(db, "exit_checker.triggered", payload={"closed": closed})
