@@ -34,7 +34,12 @@ class Settings(BaseSettings):
 
     # --- data / quant ---
     DATA_PROVIDER: str = "synthetic"     # synthetic | yfinance | angelone | dhan
+    DATA_PROVIDER_FALLBACK: str | None = None   # e.g. "dhan" — used if the primary errors (blueprint/02)
     DEFAULT_CAPITAL: float = 100000.0
+
+    # --- Dhan (fallback NSE data) — set in backend/.env ---
+    DHAN_CLIENT_ID: str | None = None
+    DHAN_ACCESS_TOKEN: str | None = None
 
     # --- Angel One SmartAPI (official NSE data) — set in backend/.env ---
     ANGELONE_API_KEY: str | None = None
