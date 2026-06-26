@@ -42,7 +42,12 @@
     "paperTrade": "Paper trade this",
     "placing": "Placing…",
     "tradeOpened": "Paper trade opened",
-    "tradeFailed": "Could not place trade"
+    "tradeFailed": "Could not place trade",
+    "welcome": "Welcome back, {name}",
+    "entry": "Entry",
+    "stop": "Stop",
+    "qty": "Qty",
+    "size": "Size"
   },
   "analyze": {
     "title": "Analyze a stock",

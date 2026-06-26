@@ -3,17 +3,14 @@
 // List trades, close open ones with an exit price + reason, and see honest behavioural
 // insights (discipline score, "winners exited early", "stops respected").
 import { useCallback, useEffect, useState } from "react";
-import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
 import { api } from "@swingai/api-client";
-import { Card, Button, ThemeToggle, LanguageSwitcher } from "@swingai/ui";
+import { Card, Button } from "@swingai/ui";
 import { useAuth } from "../../../lib/auth";
-import { RequireAuth } from "../../../components/RequireAuth";
+import { DashboardShell } from "../../../components/DashboardShell";
 
 function JournalInner() {
   const t = useTranslations();
-  const { locale } = useParams<{ locale: string }>();
   const token = useAuth((s) => s.token);
   const [trades, setTrades] = useState<any[]>([]);
   const [review, setReview] = useState<any>(null);
@@ -48,19 +45,11 @@ function JournalInner() {
   };
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <header className="flex items-center justify-between border-b border-border px-6 py-4">
-        <div className="flex items-center gap-3">
-          <Link href={`/${locale}/dashboard`} className="text-sm text-muted-foreground hover:underline">← {t("nav.dashboard")}</Link>
-          <h1 className="font-semibold">{t("journal.title")}</h1>
-        </div>
-        <div className="flex items-center gap-2"><LanguageSwitcher /><ThemeToggle /></div>
-      </header>
-
-      <section className="mx-auto max-w-4xl space-y-8 px-6 py-8">
-        {/* Review */}
-        <div>
-          <h2 className="mb-3 text-lg font-semibold">{t("journal.review")}</h2>
+    <div className="space-y-8">
+      <h1 className="text-2xl font-bold tracking-tight">{t("journal.title")}</h1>
+      {/* Review */}
+      <div>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">{t("journal.review")}</h2>
           {review?.closed > 0 ? (
             <Card className="p-5">
               <div className="flex items-baseline gap-3">
@@ -79,9 +68,9 @@ function JournalInner() {
           ) : <Card className="p-5 text-sm text-muted-foreground">{t("journal.noReview")}</Card>}
         </div>
 
-        {/* Trades */}
-        <div>
-          <h2 className="mb-3 text-lg font-semibold">{t("journal.title")}</h2>
+      {/* Trades */}
+      <div>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">{t("journal.title")}</h2>
           {trades.length === 0 ? (
             <Card className="p-5 text-sm text-muted-foreground">{t("journal.noTrades")}</Card>
           ) : (
@@ -122,12 +111,11 @@ function JournalInner() {
               ))}
             </div>
           )}
-        </div>
-      </section>
-    </main>
+      </div>
+    </div>
   );
 }
 
 export default function JournalPage() {
-  return <RequireAuth><JournalInner /></RequireAuth>;
+  return <DashboardShell><JournalInner /></DashboardShell>;
 }
