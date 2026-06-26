@@ -1,6 +1,8 @@
 "use client";
 // User dashboard — Layers 1-2 (risk + process). Rich, responsive, fully API-driven (blueprint/14).
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import { Target, Percent, Gauge, Activity, Wallet, ArrowRight } from "lucide-react";
@@ -14,6 +16,7 @@ import { MarketStatus } from "../../../components/MarketStatus";
 
 function DashboardInner() {
   const t = useTranslations();
+  const { locale } = useParams<{ locale: string }>();
   const token = useAuth((s) => s.token);
   const [me, setMe] = useState<any>(null);
   const [picks, setPicks] = useState<DailyPicks | null>(null);
@@ -110,7 +113,15 @@ function DashboardInner() {
 
       {/* daily picks */}
       <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">{t("dashboard.picks")}</h2>
+        <div className="mb-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{t("dashboard.picks")}</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Top swing-trade setups for this session — the highest-conviction stocks with a clean entry right now,
+            screened from the <b className="text-foreground">NIFTY 500</b> on live prices.
+            {picks?.date ? <> As of <span className="text-foreground">{picks.date}</span>.</> : null}
+            {" "}Browse the full universe by tier on the <Link href={`/${locale}/scan`} className="text-primary hover:underline">Scanner</Link>.
+          </p>
+        </div>
         {!picks ? (
           <div className="space-y-3">{[0, 1].map((i) => <Skeleton key={i} className="h-40" />)}</div>
         ) : picks.cash_mode ? (
