@@ -247,6 +247,18 @@ async def rerun_pipeline(admin=Depends(require_permissions("picks.override")),
             "picks": len(result.get("picks", []))}
 
 
+@router.post("/recompute-analytics")
+async def recompute_analytics(admin=Depends(require_permissions("picks.override")),
+                              db: AsyncSession = Depends(get_db)):
+    """Manually rebuild user_analytics from closed paper trades (nightly job on-demand)."""
+    from ..jobs.recompute_analytics import run as analytics_run
+    result = await analytics_run()
+    await ev.admin(db, "analytics.recompute", user=admin, resource="user_analytics",
+                   payload=result)
+    await db.commit()
+    return {"ok": True, **result}
+
+
 @router.get("/audit-log")
 async def audit_log(limit: int = Query(100, ge=1, le=500),
                     _=Depends(require_permissions("events.read")), db: AsyncSession = Depends(get_db)):

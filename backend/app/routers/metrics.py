@@ -15,29 +15,9 @@ from ..core.db import get_db
 from ..core.security import get_current_user, require_permissions
 from ..models.trading import AIPick, PaperTrade
 from ..models.user import User
+from ..services.analytics import summarize_trades as _summarize
 
 router = APIRouter(tags=["metrics"])
-
-
-def _summarize(trades: list[PaperTrade]) -> dict:
-    closed = [t for t in trades if t.status != "open"]
-    if not closed:
-        return {"trades": 0, "note": "insufficient data — no closed trades yet"}
-    wins = [t for t in closed if t.status == "closed_profit"]
-    losses = [t for t in closed if t.status == "closed_loss"]
-    scratches = [t for t in closed if t.status == "scratch"]
-    rs = [float(t.r_multiple or 0) for t in closed]
-    gp = sum(float(t.pnl_inr or 0) for t in closed if (t.pnl_inr or 0) > 0)
-    gl = -sum(float(t.pnl_inr or 0) for t in closed if (t.pnl_inr or 0) < 0)
-    decided = len(wins) + len(losses) + len(scratches)
-    return {
-        "trades": len(closed),
-        "expectancy_r": round(mean(rs), 3),                       # headline
-        "win_rate_pct": round(len(wins) / decided * 100, 1),      # incl. scratches
-        "wins": len(wins), "losses": len(losses), "scratches": len(scratches),
-        "profit_factor": round(gp / gl, 2) if gl > 0 else None,
-        "total_pnl_inr": round(sum(float(t.pnl_inr or 0) for t in closed), 2),
-    }
 
 
 def _summarize_screener(picks: list[AIPick]) -> dict:
