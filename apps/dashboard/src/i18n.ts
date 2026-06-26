@@ -1,10 +1,15 @@
 import { getRequestConfig } from "next-intl/server";
-import { notFound } from "next/navigation";
 
 export const locales = ["en", "hi"] as const;
 export const defaultLocale = "en";
 
-export default getRequestConfig(async ({ locale }) => {
-  if (!locales.includes(locale as any)) notFound();
-  return { messages: (await import(`./messages/${locale}.json`)).default };
+// next-intl 3.22+: read the locale via `requestLocale` and RETURN it (required — a missing
+// `locale` makes the intl context null and crashes client hooks like usePathname/useRouter).
+export default getRequestConfig(async ({ requestLocale }) => {
+  let locale = await requestLocale;
+  if (!locale || !locales.includes(locale as any)) locale = defaultLocale;
+  return {
+    locale,
+    messages: (await import(`./messages/${locale}.json`)).default,
+  };
 });

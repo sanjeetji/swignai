@@ -38,12 +38,22 @@ export interface Pick {
 }
 export interface DailyPicks { date: string; regime: string; cash_mode: boolean; picks: Pick[] }
 
+// Default per-request timeout (ms) so a slow/hung backend never freezes SSR — the request
+// aborts and the caller's `.catch(fallback)` kicks in instead of hanging the page forever.
+const REQ_TIMEOUT_MS = 12000;
+
 async function req<T>(path: string, init: RequestInit = {}, token?: string): Promise<T> {
   const headers: Record<string, string> = { "Content-Type": "application/json", ...(init.headers as any) };
   if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(`${API_BASE}${path}`, { ...init, headers, cache: "no-store" });
-  if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
-  return res.json() as Promise<T>;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), REQ_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${API_BASE}${path}`, { ...init, headers, cache: "no-store", signal: ctrl.signal });
+    if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
+    return res.json() as Promise<T>;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export const api = {

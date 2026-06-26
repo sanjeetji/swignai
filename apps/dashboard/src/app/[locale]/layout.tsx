@@ -18,7 +18,7 @@ export default async function LocaleLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </head>
       <body>
-        <NextIntlClientProvider messages={messages}>
+        <NextIntlClientProvider locale={locale} messages={messages}>
           <ThemeProvider presets={appearance?.presets ?? []} defaults={appearance?.defaults}>
             <Providers>{children}</Providers>
           </ThemeProvider>

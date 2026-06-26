@@ -49,10 +49,10 @@ function ShellInner({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-background text-foreground">
       {/* desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-border bg-card/40 backdrop-blur lg:flex">
-        <div className="flex items-center gap-2 px-5 py-5">
+        <Link href={href("dashboard")} className="flex items-center gap-2 px-5 py-5 transition-opacity hover:opacity-80" aria-label="SwingAI — dashboard home">
           <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground font-bold">S</div>
           <span className="text-lg font-semibold tracking-tight">SwingAI</span>
-        </div>
+        </Link>
         <nav className="flex-1 space-y-1 px-3">
           {items.map(({ slug, label, Icon }) => (
             <Link key={slug} href={href(slug)}
@@ -74,10 +74,10 @@ function ShellInner({ children }: { children: React.ReactNode }) {
 
       {/* mobile top bar */}
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-card/70 px-4 py-3 backdrop-blur lg:hidden">
-        <div className="flex items-center gap-2">
+        <Link href={href("dashboard")} className="flex items-center gap-2 transition-opacity hover:opacity-80" aria-label="SwingAI — dashboard home">
           <div className="grid h-7 w-7 place-items-center rounded-lg bg-primary text-primary-foreground text-sm font-bold">S</div>
           <span className="font-semibold">SwingAI</span>
-        </div>
+        </Link>
         <div className="flex items-center gap-1">
           <NotificationBell /><LanguageSwitcher /><ThemeToggle />
           <button onClick={doLogout} className="ml-1 rounded-md p-2 text-muted-foreground hover:bg-muted" aria-label={t("nav.logout")}>
