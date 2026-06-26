@@ -194,13 +194,15 @@ async def _scan_tier_bg(tier: str):
             pass
         feats, index_close = _load_features(provider)
         if index_close is None or len(index_close) == 0:
-            return
+            return  # degraded fetch (bad index) — do NOT cache; let it retry next request
         date = index_close.index[-1]
         data = scan_universe(date, feats, index_close, DEFAULT, settings.DEFAULT_CAPITAL)
         data["date"] = str(date.date())
         for r in data["results"]:
             r["sector"] = sector_for(r["symbol"])
-        await cache_set(f"scan:tier:{tier}", json.dumps(data), ttl=60 * 60 * 12)
+        # Only cache a real result — never persist an empty/degraded scan (it would stick for hours).
+        if data.get("results"):
+            await cache_set(f"scan:tier:{tier}", json.dumps(data), ttl=60 * 60 * 12)
     except Exception:
         logging.getLogger("picks").exception("tier scan failed: %s", tier)
     finally:
@@ -217,15 +219,20 @@ async def scan(min_score: float = 0, sector: str | None = None, regime_bias: str
     tier_syms = set(_tier_symbols(tier))
     data = None
 
-    cached = await cache_get(f"scan:tier:{tier}")
-    if cached:
-        data = json.loads(cached)
-    else:
-        # derive from the daily full scan if present (covers every tier instantly)
-        full = await cache_get("scan:latest")
-        if full:
-            fd = json.loads(full)
+    # 1) PREFER the full daily scan and derive every tier from it by filtering — one reliable
+    #    scan, consistent regime, and supersets are always correct (nifty150 ⊇ nifty50).
+    full = await cache_get("scan:latest")
+    if full:
+        fd = json.loads(full)
+        if fd.get("results"):
             data = {**fd, "results": [r for r in fd["results"] if r["symbol"] in tier_syms]}
+    # 2) else a previously-cached per-tier scan (only ones with real results are cached)
+    if data is None:
+        cached = await cache_get(f"scan:tier:{tier}")
+        if cached:
+            cd = json.loads(cached)
+            if cd.get("results"):
+                data = cd
 
     if data is None:
         # nothing cached for this tier → kick off a background scan and tell the client to poll
