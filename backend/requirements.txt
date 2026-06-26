@@ -10,6 +10,7 @@ websocket-client                # smartapi-python (live feed) dep
 
 # Dev / tests
 pytest>=8.0
+httpx                    # FastAPI TestClient (API integration tests)
 
 # --- Phase 1 (platform API) ---
 fastapi>=0.115
