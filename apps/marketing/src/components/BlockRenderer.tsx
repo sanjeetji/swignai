@@ -15,8 +15,8 @@ function resolveHref(href: string | undefined, locale: string): string {
   return href;
 }
 
-export function BlockRenderer({ blocks, stats, testimonials, locale = "en" }: {
-  blocks: Block[]; stats?: any[]; testimonials?: any[]; locale?: string;
+export function BlockRenderer({ blocks, stats, testimonials, faqs, locale = "en" }: {
+  blocks: Block[]; stats?: any[]; testimonials?: any[]; faqs?: any[]; locale?: string;
 }) {
   return (
     <>
@@ -87,6 +87,22 @@ export function BlockRenderer({ blocks, stats, testimonials, locale = "en" }: {
                       <p className="-mt-3 italic">{t.quote}</p>
                       <div className="mt-3 text-sm font-medium text-muted-foreground">— {t.author}{t.role ? `, ${t.role}` : ""}</div>
                     </Card>
+                  ))}
+                </div>
+              </section>
+            );
+          case "faq":
+            return (
+              <section key={i} className="mx-auto max-w-3xl px-6 py-16">
+                <h2 className="mb-6 text-center text-2xl font-bold tracking-tight">Frequently asked</h2>
+                <div className="space-y-3">
+                  {(faqs || []).map((f: any, j: number) => (
+                    <details key={j} className="group rounded-xl border border-border bg-card p-4">
+                      <summary className="cursor-pointer list-none font-medium marker:content-none">
+                        <span className="flex items-center justify-between">{f.q}<span className="text-muted-foreground transition-transform group-open:rotate-45">+</span></span>
+                      </summary>
+                      <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{f.a}</p>
+                    </details>
                   ))}
                 </div>
               </section>

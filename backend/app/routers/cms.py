@@ -67,6 +67,20 @@ async def stats(locale: str = "en", db: AsyncSession = Depends(get_db)):
     ]}
 
 
+@router.get("/api/cms/faqs")
+async def faqs(locale: str = "en", db: AsyncSession = Depends(get_db)):
+    from ..models.cms import Faq
+
+    async def fetch(loc):
+        return (await db.execute(
+            select(Faq).where(Faq.locale == loc).order_by(Faq.sort_order)
+        )).scalars().all()
+    rows = await fetch(locale)
+    if not rows and locale != "en":
+        rows = await fetch("en")
+    return {"faqs": [{"q": f.question, "a": f.answer, "category": f.category} for f in rows]}
+
+
 # ---------------- Admin (blueprint/21 §6) ----------------
 @router.get("/api/admin/cms/pages")
 async def admin_pages(_=Depends(require_permissions("content.manage")), db: AsyncSession = Depends(get_db)):

@@ -18,10 +18,11 @@ export async function generateMetadata({ params: { locale } }: { params: { local
 
 export default async function Home({ params: { locale } }: { params: { locale: string } }) {
   const t = await getTranslations();
-  const [page, stats, testimonials] = await Promise.all([
+  const [page, stats, testimonials, faqs] = await Promise.all([
     api.cmsPage("home", locale).catch(() => ({ sections: [] as any[] })),
     api.stats(locale).then((r) => r.stats ?? []).catch(() => []),
     api.testimonials(locale).then((r) => r.testimonials ?? []).catch(() => []),
+    api.faqs(locale).then((r) => r.faqs ?? []).catch(() => []),
   ]);
 
   // Safety fallback so the landing is never blank (e.g. backend momentarily down).
@@ -36,7 +37,7 @@ export default async function Home({ params: { locale } }: { params: { locale: s
 
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <BlockRenderer blocks={sections} stats={stats} testimonials={testimonials} locale={locale} />
+      <BlockRenderer blocks={sections} stats={stats} testimonials={testimonials} faqs={faqs} locale={locale} />
     </main>
   );
 }

@@ -11,7 +11,7 @@ from sqlalchemy import func, select
 
 from .core.db import SessionLocal
 from .models.billing import Plan
-from .models.cms import CmsPage, CmsSection, StatMetric, Testimonial
+from .models.cms import CmsPage, CmsSection, Faq, StatMetric, Testimonial
 from .models.platform import FeatureFlag, Integration, PlatformSetting, ThemePreset
 from .models.user import Permission, Role, RolePermission
 
@@ -132,11 +132,15 @@ async def seed_if_empty() -> None:
                           "cta": {"label": "Start free", "href": "/signup"}}),
                 ("stats", {"source": "stats_metrics"}),
                 ("features", {"items": [
-                    {"title": "Enforced risk engine", "body": "Position sizing, stops and portfolio heat — automatic."},
-                    {"title": "Honest track record", "body": "Every pick, net of costs, in R-multiples. Scratches counted."},
-                    {"title": "Hinglish explanations", "body": "Plain-language reasoning for every setup."},
+                    {"title": "Enforced risk engine", "body": "Position sizing, stops and portfolio heat — automatic, not optional."},
+                    {"title": "NSE scanner", "body": "Rank the universe by a deterministic quant score, relative strength and volume."},
+                    {"title": "Honest track record", "body": "Every pick, net of costs, in R-multiples. Scratches counted, nothing hidden."},
+                    {"title": "Paper trading + journal", "body": "Place trades at real prices, log your reasons, review your discipline."},
+                    {"title": "Hinglish explanations", "body": "Plain-language reasoning for every setup — analysis, never a buy/sell command."},
+                    {"title": "Personal analytics", "body": "Your expectancy, win rate, profit factor and equity curve over time."},
                 ]}),
                 ("testimonials", {"source": "testimonials"}),
+                ("faq", {"source": "faqs"}),
                 ("cta", {"heading": "Prove it on paper first.", "cta": {"label": "Create account", "href": "/signup"}}),
             ]
             for i, (bt, content) in enumerate(blocks):
@@ -151,8 +155,35 @@ async def seed_if_empty() -> None:
                 db.add(StatMetric(key=k, label=label, value=val, suffix=suf, is_live=live, sort_order=i))
 
         if await _empty(db, Testimonial):
-            db.add(Testimonial(author_name="Beta tester", role="Swing trader", company="",
-                               quote="The risk engine stopped me oversizing. First time I followed a plan.",
-                               rating=5, is_featured=True, sort_order=0))
+            for i, (author, role, quote) in enumerate([
+                ("Rahul M.", "Swing trader",
+                 "The risk engine stopped me oversizing. First time I actually followed a plan instead of my gut."),
+                ("Priya S.", "Part-time trader",
+                 "The journal review showed me I was exiting winners early. Fixing that changed my expectancy."),
+                ("Anand K.", "Beta tester",
+                 "Honest track record in R-multiples, not vanity win-rate. That's why I trust the picks as analysis."),
+            ]):
+                db.add(Testimonial(author_name=author, role=role, company="", quote=quote,
+                                   rating=5, is_featured=(i == 0), sort_order=i))
+
+        if await _empty(db, Faq):
+            for i, (q, a) in enumerate([
+                ("Is this investment advice?",
+                 "No. SwingAI provides deterministic technical analysis and educational tools — not advice, "
+                 "recommendations, or solicitations. We're not a SEBI-registered Research Analyst or Adviser."),
+                ("Are the picks AI or a black box?",
+                 "Neither. The score is fixed mathematics — EMA/RSI/MACD/ATR/ADX, relative strength and volume "
+                 "through a weighted formula. The only AI is the optional Hinglish explanation text."),
+                ("Do you execute real trades?",
+                 "No. Trading on SwingAI is paper (simulated) with real prices, so you can prove a process before "
+                 "risking real money. We never handle your funds."),
+                ("Is the data real?",
+                 "Yes — live NSE prices via Angel One SmartAPI. The track record is net of costs, in R-multiples, "
+                 "counting wins, losses and scratches."),
+                ("How much does it cost?",
+                 "Start free, no card. A free trial unlocks everything for a limited time; paid plans are shown on "
+                 "the Pricing page and are fully managed by us."),
+            ]):
+                db.add(Faq(question=q, answer=a, sort_order=i, locale="en"))
 
         await db.commit()
