@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     DATA_PROVIDER: str = "synthetic"     # synthetic | yfinance | angelone | dhan
     DATA_PROVIDER_FALLBACK: str | None = None   # e.g. "dhan" — used if the primary errors (blueprint/02)
     DEFAULT_CAPITAL: float = 100000.0
+    # Universe the screener scans: "nifty500" (broad, ~500 NSE stocks) or "curated" (~50 large caps).
+    # nifty500 = far more swing opportunities; the first scan after a fresh DB takes a few minutes.
+    STOCK_UNIVERSE: str = "nifty500"
 
     # --- Dhan (fallback NSE data) — set in backend/.env ---
     DHAN_CLIENT_ID: str | None = None

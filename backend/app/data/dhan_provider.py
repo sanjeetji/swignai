@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .angelone_provider import DEFAULT_UNIVERSE
+from .angelone_provider import _select_universe
 from .base import OHLCV_COLUMNS
 
 
@@ -17,7 +17,7 @@ class DhanProvider:
     def __init__(self, universe: list[str] | None = None):
         from ..core.config import settings
         self.s = settings
-        self.universe = universe or DEFAULT_UNIVERSE
+        self.universe = universe or _select_universe(settings)
 
     def _require_creds(self):
         if not (self.s.DHAN_CLIENT_ID and self.s.DHAN_ACCESS_TOKEN):

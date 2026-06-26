@@ -42,13 +42,22 @@ DEFAULT_UNIVERSE = [
 ]
 
 
+def _select_universe(settings) -> list[str]:
+    """Pick the scan universe from config: 'nifty500' (broad) or 'curated' (~50 large caps)."""
+    if str(getattr(settings, "STOCK_UNIVERSE", "nifty500")).lower() in ("nifty500", "500", "broad"):
+        from .nifty500 import NIFTY_500
+        return NIFTY_500
+    return DEFAULT_UNIVERSE
+
+
 class AngelOneProvider:
     def __init__(self, universe: list[str] | None = None):
         from ..core.config import settings
         self.s = settings
-        self.universe = universe or DEFAULT_UNIVERSE
+        self.universe = universe or _select_universe(settings)
         self._smart = None
         self._scrip: dict[str, str] | None = None
+        self._ohlcv_cache: dict[str, pd.DataFrame] = {}   # per-process memo (symbol+end → bars)
 
     # --- auth (cached for the process) ---
     def _connect(self):
@@ -112,10 +121,17 @@ class AngelOneProvider:
     def get_ohlcv(self, symbol: str, start=None, end=None) -> pd.DataFrame:
         end = pd.Timestamp(end) if end else pd.Timestamp.today().normalize()
         start = pd.Timestamp(start) if start else end - pd.Timedelta(days=750)
+        # Per-process memo: avoids re-fetching the same symbol when the scanner + pipeline both
+        # run in one process the same day (each historical call costs ~0.34s of rate-limit budget).
+        ck = f"{symbol.upper()}@{end.date()}"
+        if ck in self._ohlcv_cache:
+            return self._ohlcv_cache[ck]
         token = self._token(symbol)
         if not token:
             return pd.DataFrame(columns=OHLCV_COLUMNS)
-        return self._candles(token, start, end)
+        df = self._candles(token, start, end)
+        self._ohlcv_cache[ck] = df
+        return df
 
     def get_index(self, start=None, end=None) -> pd.Series:
         end = pd.Timestamp(end) if end else pd.Timestamp.today().normalize()

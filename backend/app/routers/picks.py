@@ -8,6 +8,7 @@ Framed as educational screening — not advice (blueprint/09).
 from __future__ import annotations
 
 import json
+import logging
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import desc, func, select
@@ -118,32 +119,36 @@ async def market_status(db: AsyncSession = Depends(get_db)):
 _refresh_in_progress = False
 
 
+async def _run_pipeline_bg():
+    """Run the screener in the background (its own DB session) so a multi-minute NIFTY-500 scan
+    isn't tied to the HTTP request — the dashboard polls /api/daily-picks for the result."""
+    global _refresh_in_progress
+    _refresh_in_progress = True
+    try:
+        from ..jobs.daily_pipeline import run
+        await run()
+    except Exception:
+        logging.getLogger("picks").exception("background pipeline failed")
+    finally:
+        _refresh_in_progress = False
+
+
 @router.post("/api/daily-picks/refresh")
 async def refresh_daily_picks(force: bool = Query(False),
                               user=Depends(get_current_user),
                               db: AsyncSession = Depends(get_db)):
-    """Populate today's picks by running the screener pipeline. Idempotent + freshness-gated:
-    a no-op when the DB already holds today's picks (so it's safe for the dashboard to call on
-    first open after a fresh install). `force=true` re-runs regardless. Auth-required."""
-    global _refresh_in_progress
-    # `date_generated` is the latest TRADING day (may be < today on weekends/holidays), so we
-    # gate on "any picks exist" rather than "== today" — this endpoint exists to populate an
-    # EMPTY db (first run / after `fresh`). Daily freshness is the scheduler's / `force`'s job.
+    """Kick off the screener pipeline to populate today's picks, in the BACKGROUND (a NIFTY-500
+    scan can take a few minutes). Idempotent + freshness-gated: a no-op when picks already exist
+    (so it's safe for the dashboard to call on first open after a fresh install). `force=true`
+    re-runs. Returns immediately; the dashboard polls /api/daily-picks until results land."""
+    import asyncio
     latest = (await db.execute(select(func.max(AIPick.date_generated)))).scalar()
     if latest is not None and not force:
         return {"ran": False, "reason": "up_to_date", "date": str(latest)}
     if _refresh_in_progress:
         return {"ran": False, "reason": "in_progress"}
-    _refresh_in_progress = True
-    try:
-        from ..jobs.daily_pipeline import run
-        r = await run()
-        return {"ran": True, "regime": r.get("regime"), "count": len(r.get("picks", [])),
-                "date": str(datetime.now(_IST).date())}
-    except Exception as e:
-        return {"ran": False, "reason": "error", "detail": str(e)[:200]}
-    finally:
-        _refresh_in_progress = False
+    asyncio.create_task(_run_pipeline_bg())
+    return {"ran": True, "reason": "started"}
 
 
 @router.get("/api/universe")
