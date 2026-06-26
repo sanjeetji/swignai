@@ -58,7 +58,7 @@ async def run() -> dict:
                     "quantity": p.plan.quantity, "position_size": p.plan.position_size}
             expl = await generate_explanation({"symbol": p.symbol, "plan": plan, "rsi": p.rsi,
                                                "rel_strength": p.rel_strength, "regime": p.regime,
-                                               "date": str(date.date())})
+                                               "date": str(date.date())}, db=db)
             # upsert ai_picks on (symbol, date)
             row = (await db.execute(select(AIPick).where(
                 AIPick.stock_symbol == p.symbol, AIPick.date_generated == date.date()))).scalar_one_or_none()

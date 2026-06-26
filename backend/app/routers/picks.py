@@ -136,7 +136,7 @@ async def daily_picks(limit: int = Query(5, ge=1, le=10), db: AsyncSession = Dep
                 "quantity": p.plan.quantity, "position_size": p.plan.position_size}
         expl = await generate_explanation({"symbol": p.symbol, "plan": plan, "rsi": p.rsi,
                                            "rel_strength": p.rel_strength, "regime": p.regime,
-                                           "date": str(date.date())})
+                                           "date": str(date.date())}, db=db)
         out.append({"symbol": p.symbol, "score": p.score, "breakdown": p.breakdown,
                     "regime": p.regime, "analysis": analysis_dict(feats[p.symbol].iloc[-1]),
                     "plan": plan, "explanation_hinglish": expl})

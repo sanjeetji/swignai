@@ -49,7 +49,24 @@ class Settings(BaseSettings):
 
     # --- jobs / LLM ---
     ENABLE_SCHEDULER: bool = False       # off in dev/tests; true in prod to run cron jobs
-    LLM_PROVIDER: str = "template"       # template | gemini | openrouter | anthropic | openai
+    # "auto" picks the first provider with a key; or pin to one. "template" = no LLM (free).
+    LLM_PROVIDER: str = "auto"           # auto | template | openrouter | groq | together | openai | gemini
+    # Per-provider keys + default models (vault overrides these via the Integrations tab).
+    OPENROUTER_API_KEY: str | None = None
+    OPENROUTER_MODEL: str = "meta-llama/llama-3.3-70b-instruct:free"
+    GROQ_API_KEY: str | None = None
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    TOGETHER_API_KEY: str | None = None
+    TOGETHER_MODEL: str = "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free"
+    OPENAI_API_KEY: str | None = None
+    OPENAI_MODEL: str = "gpt-4o-mini"
+    GEMINI_API_KEY: str | None = None
+    GEMINI_MODEL: str = "gemini-2.0-flash"
+
+    # --- payments (Razorpay) — vault overrides these via the Integrations tab ---
+    RAZORPAY_KEY_ID: str | None = None
+    RAZORPAY_KEY_SECRET: str | None = None
+    RAZORPAY_WEBHOOK_SECRET: str | None = None
 
     # --- rate limiting ---
     RATE_LIMIT_PER_MIN: int = 120        # per-IP default for sensitive/public endpoints
