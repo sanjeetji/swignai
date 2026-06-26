@@ -19,7 +19,7 @@ from ..models.user import User
 from ..schemas import CreateOrderIn, VerifyPaymentIn
 from ..services import event_log as ev
 from ..services import razorpay
-from ..services.tiers import effective_tier
+from ..services.tiers import access_state
 
 router = APIRouter(prefix="/api/billing", tags=["billing"])
 
@@ -49,10 +49,26 @@ async def my_subscription(user: User = Depends(get_current_user), db: AsyncSessi
     trial_used = (await db.execute(
         select(Subscription).where(Subscription.user_id == user.id, Subscription.plan == "trial")
     )).scalars().first() is not None
-    return {"tier": await effective_tier(db, user),
+    st = await access_state(db, user)
+    return {"tier": st["tier"],
             "status": sub.status if sub else "none",
             "current_period_end": str(sub.current_period_end) if sub and sub.current_period_end else None,
-            "trial_used": trial_used}
+            "trial_used": trial_used,
+            # paywall fields — the dashboard gate reads these
+            "state": st["state"], "walled": st["walled"],
+            "days_left": st["days_left"], "reason": st["reason"]}
+
+
+@router.post("/activate-free")
+async def activate_free(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Put the user on the permanent Free plan (basic access) — chosen at signup or at the
+    paywall after a trial/paid plan lapsed. Supersedes any expired subscription."""
+    sub = Subscription(user_id=user.id, plan="free", status="active", current_period_end=None)
+    db.add(sub)
+    user.subscription_tier = "free"
+    await ev.emit(db, "billing.free_activated", category="billing", user=user)
+    await db.commit()
+    return {"ok": True, "tier": "free"}
 
 
 @router.post("/start-trial")

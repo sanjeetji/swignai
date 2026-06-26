@@ -7,7 +7,7 @@ access lapses automatically when a period ends. `require_tier` is a route depend
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, HTTPException, status
 from sqlalchemy import select
@@ -50,5 +50,68 @@ def require_tier(min_tier: str):
         if rank(t) < rank(min_tier):
             raise HTTPException(status.HTTP_402_PAYMENT_REQUIRED,
                                 f"This feature needs the {min_tier.title()} plan. Upgrade in Billing.")
+        return user
+    return _dep
+
+
+PAID_GRACE_DAYS = 3   # a lapsed PAID plan stays usable this long (failed-renewal cushion)
+
+
+async def access_state(db: AsyncSession, user) -> dict:
+    """The user's access decision (industry paywall):
+      - Free plan (or never subscribed) → permanent basic access (not walled).
+      - Trial → full access until it ends; the moment it ends → WALLED.
+      - Paid → full access until period end; then a PAID_GRACE_DAYS grace; after that → WALLED.
+    Returns {tier, state, walled, days_left, reason}. Admin bypass is handled by the caller.
+    """
+    sub = (await db.execute(
+        select(Subscription).where(Subscription.user_id == user.id).order_by(Subscription.created_at.desc())
+    )).scalars().first()
+    now = datetime.now(timezone.utc)
+    if not sub:
+        return {"tier": "free", "state": "free", "walled": False, "days_left": None, "reason": None}
+
+    end = sub.current_period_end
+    if end is not None and end.tzinfo is None:
+        end = end.replace(tzinfo=timezone.utc)
+    days_until = (end - now).days + 1 if end else None
+
+    if sub.status == "trialing":
+        if end is not None and end < now:
+            return {"tier": "free", "state": "expired", "walled": True, "days_left": 0, "reason": "trial_ended"}
+        return {"tier": "trial", "state": "active", "walled": False, "days_left": days_until, "reason": None}
+
+    if sub.status == "active":
+        if sub.plan == "free" or end is None:
+            tier = "free" if sub.plan == "free" else sub.plan
+            return {"tier": tier, "state": "free" if tier == "free" else "active",
+                    "walled": False, "days_left": None, "reason": None}
+        if end < now:
+            grace_end = end + timedelta(days=PAID_GRACE_DAYS)
+            if now < grace_end:
+                return {"tier": sub.plan, "state": "grace", "walled": False,
+                        "days_left": (grace_end - now).days + 1, "reason": "renewal_due"}
+            return {"tier": "free", "state": "expired", "walled": True, "days_left": 0, "reason": "plan_lapsed"}
+        return {"tier": sub.plan, "state": "active", "walled": False, "days_left": days_until, "reason": None}
+
+    # canceled / past_due / unknown → no access
+    return {"tier": "free", "state": "expired", "walled": True, "days_left": 0, "reason": sub.status}
+
+
+async def _is_admin(db: AsyncSession, user) -> bool:
+    from .rbac import user_roles
+    return any(r in ("super_admin", "admin") for r in await user_roles(db, user))
+
+
+def require_access():
+    """Dependency: 402 'subscription_required' when the user is walled (lapsed trial/paid).
+    Admins always pass. Use on the authed dashboard data endpoints."""
+    async def _dep(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+        if await _is_admin(db, user):
+            return user
+        st = await access_state(db, user)
+        if st["walled"]:
+            raise HTTPException(status.HTTP_402_PAYMENT_REQUIRED,
+                                "subscription_required: your plan has ended — choose a plan to continue.")
         return user
     return _dep

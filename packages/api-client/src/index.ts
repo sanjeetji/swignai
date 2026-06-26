@@ -151,6 +151,7 @@ export const api = {
   subscription: (token: string) => req<any>("/api/billing/subscription", {}, token).catch(() => null),
   createOrder: (token: string, plan: string) => req<any>("/api/billing/create-order", { method: "POST", body: JSON.stringify({ plan }) }, token),
   startTrial: (token: string) => req<any>("/api/billing/start-trial", { method: "POST" }, token),
+  activateFree: (token: string) => req<any>("/api/billing/activate-free", { method: "POST" }, token),
   verifyPayment: (token: string, body: any) => req<any>("/api/billing/verify", { method: "POST", body: JSON.stringify(body) }, token),
   equityCurve: (token: string) =>
     req<{ closed: number; curve: any[]; distribution: any[] }>("/api/analytics/equity", {}, token)

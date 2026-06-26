@@ -17,7 +17,7 @@ from ..core.security import get_current_user, require_permissions
 from ..models.trading import AIPick, PaperTrade
 from ..models.user import User
 from ..services.analytics import summarize_trades as _summarize
-from ..services.tiers import require_tier
+from ..services.tiers import require_access, require_tier
 
 router = APIRouter(tags=["metrics"])
 
@@ -57,7 +57,8 @@ async def track_record(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/api/analytics")
-async def my_analytics(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def my_analytics(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+                       _gate=Depends(require_access())):
     rows = (await db.execute(select(PaperTrade).where(PaperTrade.user_id == user.id))).scalars().all()
     return _summarize(list(rows))
 
@@ -88,7 +89,8 @@ async def my_equity_curve(user: User = Depends(get_current_user), db: AsyncSessi
 
 
 @router.get("/api/trades")
-async def my_trades(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def my_trades(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+                    _gate=Depends(require_access())):
     """The user's trade journal — open + closed with full detail (Layer 2): entry/stop/targets
     (T1=2R, T2=3R, T3=4R), entry & exit timestamps, hold days, position size, and — for open
     positions — the live price, unrealized P&L and progress toward target/stop."""
@@ -141,7 +143,8 @@ async def my_trades(user: User = Depends(get_current_user), db: AsyncSession = D
 
 
 @router.get("/api/journal/review")
-async def journal_review(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def journal_review(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+                         _gate=Depends(require_access())):
     """Post-trade review — discipline score + honest behavioural insights (Layer 2, blueprint/00)."""
     rows = (await db.execute(select(PaperTrade).where(PaperTrade.user_id == user.id))).scalars().all()
     closed = [t for t in rows if t.status in ("closed_profit", "closed_loss", "scratch")]
