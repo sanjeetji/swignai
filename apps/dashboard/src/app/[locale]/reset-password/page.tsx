@@ -4,8 +4,9 @@ import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { api } from "@swingai/api-client";
-import { Button, Card, ThemeToggle, LanguageSwitcher } from "@swingai/ui";
+import { Button } from "@swingai/ui";
 import { useAuth } from "../../../lib/auth";
+import { AuthShell, authInput } from "../../../components/AuthShell";
 
 export default function ResetPasswordPage() {
   const t = useTranslations();
@@ -29,26 +30,17 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-6 text-foreground">
-      <Card className="w-full max-w-sm p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h1 className="text-xl font-semibold">{t("auth.resetTitle")}</h1>
-          <div className="flex items-center gap-1"><LanguageSwitcher /><ThemeToggle /></div>
-        </div>
-        {!token ? (
-          <p className="text-sm text-destructive">{t("auth.resetNoToken")}</p>
-        ) : (
-          <form onSubmit={submit} className="space-y-3">
-            <input type="password" className="w-full rounded-md border border-border bg-transparent px-3 py-2"
-              placeholder={t("auth.newPassword")} value={password} onChange={(e) => setPassword(e.target.value)} />
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" className="w-full">{t("auth.resetSubmit")}</Button>
-          </form>
-        )}
-        <Link href={`/${locale}/login`} className="mt-4 block text-center text-sm text-muted-foreground hover:underline">
-          {t("auth.backToLogin")}
-        </Link>
-      </Card>
-    </main>
+    <AuthShell title={t("auth.resetTitle")} subtitle={t("auth.resetSub")}
+      footer={<Link href={`/${locale}/login`} className="text-muted-foreground hover:text-foreground hover:underline">{t("auth.backToLogin")}</Link>}>
+      {!token ? (
+        <p className="text-sm text-destructive">{t("auth.resetNoToken")}</p>
+      ) : (
+        <form onSubmit={submit} className="space-y-3">
+          <input type="password" className={authInput} placeholder={t("auth.newPassword")} value={password} onChange={(e) => setPassword(e.target.value)} />
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <Button type="submit" className="w-full">{t("auth.resetSubmit")}</Button>
+        </form>
+      )}
+    </AuthShell>
   );
 }
