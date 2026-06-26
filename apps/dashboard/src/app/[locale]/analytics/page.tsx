@@ -2,18 +2,21 @@
 // Personal analytics (blueprint/20) — equity curve + R-multiple distribution + headline
 // stats, all from real closed paper trades (Recharts, theme-token colored).
 import { useCallback, useEffect, useState } from "react";
-import { Target, Percent, Gauge, Activity } from "lucide-react";
+import { useParams } from "next/navigation";
+import Link from "next/link";
+import { Target, Percent, Gauge, Activity, Crown } from "lucide-react";
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar, Cell,
 } from "recharts";
 import { api } from "@swingai/api-client";
-import { Card } from "@swingai/ui";
+import { Card, Button } from "@swingai/ui";
 import { useAuth } from "../../../lib/auth";
 import { DashboardShell } from "../../../components/DashboardShell";
 import { StatCard, Skeleton } from "../../../components/dashboard-ui";
 
 function AnalyticsInner() {
   const token = useAuth((s) => s.token);
+  const { locale } = useParams<{ locale: string }>();
   const [summary, setSummary] = useState<any>(null);
   const [eq, setEq] = useState<any>(null);
 
@@ -46,6 +49,15 @@ function AnalyticsInner() {
         <Card className="p-6 text-sm text-muted-foreground">No closed trades yet — close some paper trades to see your equity curve and R-distribution.</Card>
       )}
 
+      {eq?.locked ? (
+        <Card className="flex flex-col items-center gap-3 p-8 text-center">
+          <Crown size={28} className="text-primary" />
+          <div className="font-semibold">Equity curve is a Pro feature</div>
+          <p className="max-w-md text-sm text-muted-foreground">Track your cumulative P&L and R-multiple distribution over time. Start a free trial or upgrade to unlock.</p>
+          <Link href={`/${locale}/billing`}><Button>See plans</Button></Link>
+        </Card>
+      ) : (
+      <>
       {/* equity curve */}
       <Card className="p-5">
         <h2 className="mb-1 text-sm font-semibold">Equity curve</h2>
@@ -94,6 +106,8 @@ function AnalyticsInner() {
           </ResponsiveContainer>
         )}
       </Card>
+      </>
+      )}
     </div>
   );
 }

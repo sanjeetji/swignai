@@ -9,10 +9,10 @@ import { useAuth } from "../../../../lib/auth";
 
 type Editing = {
   slug: string; name: string; price_inr: number; interval: string;
-  features: string; is_active: boolean; is_featured: boolean; sort_order: number;
+  features: string; trial_days: number; is_active: boolean; is_featured: boolean; sort_order: number;
 };
 
-const blank: Editing = { slug: "", name: "", price_inr: 0, interval: "month", features: "", is_active: true, is_featured: false, sort_order: 0 };
+const blank: Editing = { slug: "", name: "", price_inr: 0, interval: "month", features: "", trial_days: 0, is_active: true, is_featured: false, sort_order: 0 };
 
 export default function AdminPlans() {
   const token = useAuth((s) => s.token);
@@ -42,6 +42,7 @@ export default function AdminPlans() {
       await api.upsertPlan(token, slug, {
         name: edit.name, price_inr: Number(edit.price_inr), interval: edit.interval,
         features: edit.features.split("\n").map((f) => f.trim()).filter(Boolean),
+        trial_days: Number(edit.trial_days),
         is_active: edit.is_active, is_featured: edit.is_featured, sort_order: Number(edit.sort_order),
       });
       setEdit(null); setMsg("Saved."); load();
@@ -80,6 +81,9 @@ export default function AdminPlans() {
             </label>
             <label className="text-xs text-muted-foreground">Sort order
               <input type="number" className={field} value={edit.sort_order} onChange={(e) => setEdit({ ...edit, sort_order: Number(e.target.value) })} />
+            </label>
+            <label className="text-xs text-muted-foreground">Free-trial days (0 = paid plan)
+              <input type="number" className={field} value={edit.trial_days} onChange={(e) => setEdit({ ...edit, trial_days: Number(e.target.value) })} />
             </label>
           </div>
           <label className="block text-xs text-muted-foreground">Features (one per line)

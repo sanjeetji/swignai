@@ -16,6 +16,7 @@ from ..core.security import get_current_user, require_permissions
 from ..models.trading import AIPick, PaperTrade
 from ..models.user import User
 from ..services.analytics import summarize_trades as _summarize
+from ..services.tiers import require_tier
 
 router = APIRouter(tags=["metrics"])
 
@@ -61,9 +62,10 @@ async def my_analytics(user: User = Depends(get_current_user), db: AsyncSession 
 
 
 @router.get("/api/analytics/equity")
-async def my_equity_curve(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def my_equity_curve(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+                          _tier=Depends(require_tier("pro"))):
     """Cumulative P&L (₹) and cumulative R over the user's closed trades, ordered by exit —
-    the equity curve + R-multiple distribution for the analytics charts (blueprint/20)."""
+    the equity curve + R-multiple distribution (Pro+; trial grants full access)."""
     rows = (await db.execute(
         select(PaperTrade).where(PaperTrade.user_id == user.id, PaperTrade.status != "open")
         .order_by(PaperTrade.exit_date)

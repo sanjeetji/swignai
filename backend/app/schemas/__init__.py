@@ -84,6 +84,7 @@ class PlanIn(BaseModel):
     price_inr: float
     interval: str = "month"
     features: list[str] = []
+    trial_days: int = 0
     is_active: bool = True
     is_featured: bool = False
     sort_order: int = 0

@@ -65,6 +65,18 @@ function BillingInner() {
     } finally { setBusy(null); }
   }
 
+  async function startTrial() {
+    if (!token) return;
+    setBusy("trial"); setMsg(null);
+    try {
+      const r = await api.startTrial(token);
+      setMsg({ ok: true, text: `Free trial started — full access for ${r.days} days 🎉` });
+      load();
+    } catch (e: any) {
+      setMsg({ ok: false, text: String(e?.message || e).replace(/API \d+:/, "").slice(0, 100) });
+    } finally { setBusy(null); }
+  }
+
   const tier = sub?.tier || "free";
 
   return (
@@ -82,33 +94,34 @@ function BillingInner() {
       )}
       {msg && <Card className={`p-4 text-sm ${msg.ok ? "text-success" : "text-destructive"}`}>{msg.text}</Card>}
 
-      <div className="grid gap-5 md:grid-cols-2">
-        {/* free */}
-        <Card className="p-6">
-          <div className="flex items-center gap-2 text-lg font-bold"><Sparkles size={18} className="text-muted-foreground" /> Free</div>
-          <div className="mt-2 text-3xl font-bold">₹0<span className="text-sm font-normal text-muted-foreground">/mo</span></div>
-          <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-            <li className="flex gap-2"><Check size={16} className="text-success" /> Daily picks + scanner</li>
-            <li className="flex gap-2"><Check size={16} className="text-success" /> Paper trading + journal</li>
-          </ul>
-          <Button className="mt-6 w-full" variant="outline" disabled>{tier === "free" ? "Current plan" : "Included"}</Button>
-        </Card>
-
-        {/* paid plans */}
+      <div className="grid gap-5 md:grid-cols-3">
         {data?.plans?.map((p: any) => {
           const active = tier === p.id;
+          const isTrial = p.trial_days > 0;
           return (
-            <Card key={p.id} className="relative overflow-hidden p-6">
-              {p.id === "premium" && <div className="absolute right-0 top-0 bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">Best value</div>}
-              <div className="flex items-center gap-2 text-lg font-bold"><Crown size={18} className="text-primary" /> {p.name}</div>
-              <div className="mt-2 text-3xl font-bold">₹{p.price_inr}<span className="text-sm font-normal text-muted-foreground">/mo</span></div>
-              <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+            <Card key={p.id} className={`relative flex flex-col overflow-hidden p-6 ${p.featured ? "border-primary ring-1 ring-primary/20" : ""}`}>
+              {p.featured && <div className="absolute right-0 top-0 bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">Best value</div>}
+              <div className="flex items-center gap-2 text-lg font-bold">
+                {isTrial ? <Sparkles size={18} className="text-success" /> : <Crown size={18} className="text-primary" />} {p.name}
+              </div>
+              <div className="mt-2 text-3xl font-bold">
+                ₹{p.price_inr}<span className="text-sm font-normal text-muted-foreground">{isTrial ? ` · ${p.trial_days} days` : "/mo"}</span>
+              </div>
+              <ul className="mt-4 flex-1 space-y-2 text-sm text-muted-foreground">
                 {p.features.map((f: string, i: number) => <li key={i} className="flex gap-2"><Check size={16} className="text-success" /> {f}</li>)}
               </ul>
-              <Button className="mt-6 w-full" disabled={active || busy === p.id || !data?.enabled}
-                onClick={() => subscribe(p.id, p.price_inr)}>
-                {active ? "Current plan" : busy === p.id ? "Opening checkout…" : `Upgrade to ${p.name}`}
-              </Button>
+              {isTrial ? (
+                <Button className="mt-6 w-full" variant="outline"
+                  disabled={active || busy === "trial" || sub?.trial_used}
+                  onClick={startTrial}>
+                  {active ? "Trial active" : sub?.trial_used ? "Trial used" : busy === "trial" ? "Starting…" : "Start free trial"}
+                </Button>
+              ) : (
+                <Button className="mt-6 w-full" disabled={active || busy === p.id || !data?.enabled}
+                  onClick={() => subscribe(p.id, p.price_inr)}>
+                  {active ? "Current plan" : busy === p.id ? "Opening checkout…" : `Upgrade to ${p.name}`}
+                </Button>
+              )}
             </Card>
           );
         })}

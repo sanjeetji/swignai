@@ -19,6 +19,7 @@ from ..models.user import User
 from ..schemas import CreateOrderIn, VerifyPaymentIn
 from ..services import event_log as ev
 from ..services import razorpay
+from ..services.tiers import effective_tier
 
 router = APIRouter(prefix="/api/billing", tags=["billing"])
 
@@ -35,7 +36,7 @@ async def plans(db: AsyncSession = Depends(get_db)):
     )).scalars().all()
     return {"plans": [
         {"id": p.slug, "name": p.name, "price_inr": float(p.price_inr), "interval": p.interval,
-         "features": p.features or [], "featured": p.is_featured} for p in rows
+         "features": p.features or [], "featured": p.is_featured, "trial_days": p.trial_days} for p in rows
     ], "currency": "INR", "enabled": razorpay.configured()}
 
 
@@ -44,9 +45,39 @@ async def my_subscription(user: User = Depends(get_current_user), db: AsyncSessi
     sub = (await db.execute(
         select(Subscription).where(Subscription.user_id == user.id).order_by(Subscription.created_at.desc())
     )).scalars().first()
-    return {"tier": user.subscription_tier,
+    # whether a trial was ever used (so the UI hides the trial CTA after)
+    trial_used = (await db.execute(
+        select(Subscription).where(Subscription.user_id == user.id, Subscription.plan == "trial")
+    )).scalars().first() is not None
+    return {"tier": await effective_tier(db, user),
             "status": sub.status if sub else "none",
-            "current_period_end": str(sub.current_period_end) if sub and sub.current_period_end else None}
+            "current_period_end": str(sub.current_period_end) if sub and sub.current_period_end else None,
+            "trial_used": trial_used}
+
+
+@router.post("/start-trial")
+async def start_trial(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Activate the free trial — full access for the plan's trial_days, no payment."""
+    trial = (await db.execute(
+        select(Plan).where(Plan.trial_days > 0, Plan.is_active == True)  # noqa: E712
+        .order_by(Plan.sort_order)
+    )).scalars().first()
+    if not trial:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "No trial plan available")
+    used = (await db.execute(
+        select(Subscription).where(Subscription.user_id == user.id, Subscription.plan == "trial")
+    )).scalars().first()
+    if used:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Trial already used")
+    sub = Subscription(user_id=user.id, plan="trial", status="trialing",
+                       current_period_end=datetime.now(timezone.utc) + timedelta(days=trial.trial_days))
+    db.add(sub)
+    user.subscription_tier = "trial"
+    await ev.emit(db, "billing.trial.started", category="billing", user=user,
+                  payload={"days": trial.trial_days})
+    await db.commit()
+    return {"ok": True, "tier": "trial", "days": trial.trial_days,
+            "current_period_end": str(sub.current_period_end)}
 
 
 @router.post("/create-order")

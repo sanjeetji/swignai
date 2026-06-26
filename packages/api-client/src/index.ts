@@ -90,8 +90,12 @@ export const api = {
   billingPlans: () => req<{ plans: any[]; currency: string; enabled: boolean }>("/api/billing/plans").catch(() => ({ plans: [], currency: "INR", enabled: false })),
   subscription: (token: string) => req<any>("/api/billing/subscription", {}, token).catch(() => null),
   createOrder: (token: string, plan: string) => req<any>("/api/billing/create-order", { method: "POST", body: JSON.stringify({ plan }) }, token),
+  startTrial: (token: string) => req<any>("/api/billing/start-trial", { method: "POST" }, token),
   verifyPayment: (token: string, body: any) => req<any>("/api/billing/verify", { method: "POST", body: JSON.stringify(body) }, token),
-  equityCurve: (token: string) => req<{ closed: number; curve: any[]; distribution: any[] }>("/api/analytics/equity", {}, token).catch(() => ({ closed: 0, curve: [], distribution: [] })),
+  equityCurve: (token: string) =>
+    req<{ closed: number; curve: any[]; distribution: any[] }>("/api/analytics/equity", {}, token)
+      .then((d) => ({ ...d, locked: false }))
+      .catch((e: any) => ({ closed: 0, curve: [], distribution: [], locked: String(e?.message || "").includes("402") })),
   portfolio: (token: string) => req<any>("/api/paper-trade/portfolio", {}, token),
   trades: (token: string) => req<any>("/api/trades", {}, token),
   journalReview: (token: string) => req<any>("/api/journal/review", {}, token),

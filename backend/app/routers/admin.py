@@ -324,8 +324,8 @@ async def list_plans(_=Depends(require_permissions("settings.appearance")),
     rows = (await db.execute(select(Plan).order_by(Plan.sort_order, Plan.price_inr))).scalars().all()
     return {"plans": [
         {"slug": p.slug, "name": p.name, "price_inr": float(p.price_inr), "interval": p.interval,
-         "features": p.features or [], "is_active": p.is_active, "is_featured": p.is_featured,
-         "sort_order": p.sort_order} for p in rows
+         "features": p.features or [], "trial_days": p.trial_days, "is_active": p.is_active,
+         "is_featured": p.is_featured, "sort_order": p.sort_order} for p in rows
     ]}
 
 
@@ -339,7 +339,8 @@ async def upsert_plan(slug: str, body: PlanIn, admin=Depends(require_permissions
         p = Plan(slug=slug)
         db.add(p)
     p.name, p.price_inr, p.interval = body.name, body.price_inr, body.interval
-    p.features, p.is_active, p.is_featured, p.sort_order = body.features, body.is_active, body.is_featured, body.sort_order
+    p.features, p.trial_days = body.features, body.trial_days
+    p.is_active, p.is_featured, p.sort_order = body.is_active, body.is_featured, body.sort_order
     await ev.admin(db, "plan.upserted", user=admin, resource="plan", resource_id=slug,
                    payload={"created": created, "price": body.price_inr})
     await db.commit()
