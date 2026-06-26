@@ -15,6 +15,7 @@ from ..core.db import SessionLocal
 from ..core.redis import cache_set
 from ..data.factory import get_provider
 from ..llm import generate_explanation
+from ..data.sectors import sector_for
 from ..models.trading import AIPick, RegimeLog
 from ..quant import picker as picker_mod
 from ..quant import regime as regime_mod
@@ -63,6 +64,7 @@ async def run() -> dict:
             if row is None:
                 row = AIPick(stock_symbol=p.symbol, date_generated=date.date())
                 db.add(row)
+            row.sector = sector_for(p.symbol)
             row.score, row.score_breakdown, row.regime = p.score, p.breakdown, p.regime
             row.entry_price, row.stop_loss = p.plan.entry, p.plan.stop
             row.target_1, row.target_2, row.rr_ratio = p.plan.target_1, p.plan.target_2, p.plan.rr_ratio

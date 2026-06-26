@@ -14,7 +14,7 @@ from sqlalchemy import select
 
 from ..core.db import SessionLocal
 from ..models.trading import PaperTrade, UserAnalytics
-from ..services.analytics import avg_holding_days, discipline_score, summarize_trades
+from ..services.analytics import avg_holding_days, best_sector, discipline_score, summarize_trades
 
 logger = logging.getLogger("recompute_analytics")
 
@@ -40,6 +40,7 @@ async def run() -> dict:
             ua.profit_factor = s.get("profit_factor")
             ua.total_pnl_inr = s.get("total_pnl_inr", 0) or 0
             ua.avg_holding_days = avg_holding_days(rows)
+            ua.best_sector = best_sector(rows)
             ua.discipline_score = discipline_score(rows)
             ua.last_updated = datetime.now(timezone.utc)
             updated += 1

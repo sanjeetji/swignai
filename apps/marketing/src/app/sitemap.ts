@@ -17,14 +17,21 @@ function withAlternates(path: string) {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const staticPaths = ["", "/stocks", "/track-record"];
+  const staticPaths = ["", "/stocks", "/sectors", "/track-record"];
   const entries: MetadataRoute.Sitemap = staticPaths.map((p) => ({
     ...withAlternates(p),
     changeFrequency: "daily",
     priority: p === "" ? 1 : 0.7,
   }));
 
-  const { symbols } = await api.universe();
+  const [{ symbols }, { sectors }] = await Promise.all([api.universe(), api.sectors()]);
+  for (const name of Object.keys(sectors)) {
+    entries.push({
+      ...withAlternates(`/sectors/${encodeURIComponent(name.toLowerCase())}`),
+      changeFrequency: "weekly",
+      priority: 0.6,
+    });
+  }
   for (const sym of symbols) {
     entries.push({
       ...withAlternates(`/stocks/${encodeURIComponent(sym)}`),

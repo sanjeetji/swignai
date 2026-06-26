@@ -35,6 +35,14 @@ async def universe():
     return {"symbols": syms, "count": len(syms)}
 
 
+@router.get("/api/sectors")
+async def sectors():
+    """NSE sector → symbols map — drives the /sectors SEO pages (blueprint/12)."""
+    from ..data.sectors import sectors_map
+    m = sectors_map()
+    return {"sectors": m, "count": len(m)}
+
+
 def _load_features(provider):
     index_close = provider.get_index()
     feats = {}

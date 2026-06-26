@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from statistics import mean
 
+from ..data.sectors import sector_for
+
 
 def summarize_trades(trades) -> dict:
     """Headline metrics from a user's PaperTrade rows (open rows ignored)."""
@@ -52,3 +54,17 @@ def avg_holding_days(trades) -> float | None:
     if not closed:
         return None
     return round(sum((t.exit_date - t.entry_date).days for t in closed) / len(closed), 1)
+
+
+def best_sector(trades) -> str | None:
+    """Sector with the highest net P&L across the user's closed trades."""
+    pnl: dict[str, float] = {}
+    for t in trades:
+        if t.status == "open":
+            continue
+        sec = sector_for(t.stock_symbol)
+        if sec:
+            pnl[sec] = pnl.get(sec, 0.0) + float(t.pnl_inr or 0)
+    if not pnl:
+        return None
+    return max(pnl, key=pnl.get)
