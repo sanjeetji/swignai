@@ -46,7 +46,6 @@ function JournalInner() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-bold tracking-tight">{t("journal.title")}</h1>
       {/* Review */}
       <div>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">{t("journal.review")}</h2>

@@ -81,13 +81,10 @@ function BillingInner() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Plans &amp; Billing</h1>
-        <p className="text-sm text-muted-foreground">
-          You're on <span className="font-semibold text-foreground capitalize">{tier}</span>.
-          {sub?.current_period_end ? ` Renews ${String(sub.current_period_end).slice(0, 10)}.` : ""}
-        </p>
-      </div>
+      <p className="text-sm text-muted-foreground">
+        You're on <span className="font-semibold text-foreground capitalize">{tier}</span>.
+        {sub?.current_period_end ? ` Renews ${String(sub.current_period_end).slice(0, 10)}.` : ""}
+      </p>
 
       {data && !data.enabled && (
         <Card className="p-4 text-sm text-warning">Payments are not configured yet — add Razorpay keys in the Integrations tab or .env.</Card>

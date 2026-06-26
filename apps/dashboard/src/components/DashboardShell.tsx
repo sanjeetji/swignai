@@ -15,6 +15,19 @@ import { NotificationBell } from "./NotificationBell";
 
 type NavItem = { slug: string; label: string; Icon: typeof LayoutDashboard; admin?: boolean };
 
+// Per-route header title + subtitle (Title Case), shown in the sticky top bar on every page.
+const PAGE_META: Record<string, { title: string; sub: string }> = {
+  dashboard: { title: "Dashboard", sub: "Your swing setups, risk & performance" },
+  scan: { title: "Scanner", sub: "Screen NSE stocks for valid swing setups" },
+  analyze: { title: "Analyze", sub: "Deep-dive any stock's swing setup" },
+  journal: { title: "Journal", sub: "Your trades & post-trade review" },
+  analytics: { title: "Analytics", sub: "Expectancy, win rate & equity curve" },
+  billing: { title: "Plans & Billing", sub: "Manage your subscription & payments" },
+  settings: { title: "Settings & Appearance", sub: "Theme, language, security & referrals" },
+  admin: { title: "Admin Console", sub: "Platform management" },
+};
+const titleCase = (s: string) => s.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
 function ShellInner({ children }: { children: React.ReactNode }) {
   const t = useTranslations();
   const router = useRouter();
@@ -43,6 +56,9 @@ function ShellInner({ children }: { children: React.ReactNode }) {
   ];
   const active = (slug: string) => pathname === `/${locale}/${slug}` || pathname.startsWith(`/${locale}/${slug}/`);
   const href = (slug: string) => `/${locale}/${slug}`;
+  // Current page header (Title Case) from the route, e.g. /hi/settings → "Settings & Appearance".
+  const seg = pathname.split("/")[2] || "dashboard";
+  const meta = PAGE_META[seg] || { title: titleCase(seg), sub: "" };
   const doLogout = () => { logout(); router.replace(`/${locale}/login`); };
 
   return (
@@ -74,10 +90,12 @@ function ShellInner({ children }: { children: React.ReactNode }) {
 
       {/* mobile top bar */}
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-card/70 px-4 py-3 backdrop-blur lg:hidden">
-        <Link href={href("dashboard")} className="flex items-center gap-2 transition-opacity hover:opacity-80" aria-label="SwingAI — dashboard home">
-          <div className="grid h-7 w-7 place-items-center rounded-lg bg-primary text-primary-foreground text-sm font-bold">S</div>
-          <span className="font-semibold">SwingAI</span>
-        </Link>
+        <div className="flex min-w-0 items-center gap-2">
+          <Link href={href("dashboard")} aria-label="SwingAI — dashboard home" className="shrink-0 transition-opacity hover:opacity-80">
+            <div className="grid h-7 w-7 place-items-center rounded-lg bg-primary text-primary-foreground text-sm font-bold">S</div>
+          </Link>
+          <span className="truncate font-semibold">{meta.title}</span>
+        </div>
         <div className="flex items-center gap-1">
           <NotificationBell /><LanguageSwitcher /><ThemeToggle />
           <button onClick={doLogout} className="ml-1 rounded-md p-2 text-muted-foreground hover:bg-muted" aria-label={t("nav.logout")}>
@@ -88,9 +106,15 @@ function ShellInner({ children }: { children: React.ReactNode }) {
 
       {/* content */}
       <div className="lg:ml-60">
-        {/* desktop top bar — notifications top-right */}
-        <header className="sticky top-0 z-20 hidden items-center justify-end gap-1 border-b border-border bg-background/70 px-10 py-2.5 backdrop-blur lg:flex">
-          <NotificationBell /><LanguageSwitcher /><ThemeToggle />
+        {/* desktop top bar — sticky page title (left) + actions (right) */}
+        <header className="sticky top-0 z-20 hidden items-center justify-between gap-4 border-b border-border bg-background/80 px-10 py-3 backdrop-blur lg:flex">
+          <div className="min-w-0">
+            <h1 className="truncate text-lg font-semibold tracking-tight">{meta.title}</h1>
+            {meta.sub && <p className="truncate text-xs text-muted-foreground">{meta.sub}</p>}
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            <NotificationBell /><LanguageSwitcher /><ThemeToggle />
+          </div>
         </header>
         {impersonating && (
           <div className="flex flex-wrap items-center justify-center gap-3 bg-warning/15 px-4 py-2 text-center text-sm text-warning">

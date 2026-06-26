@@ -53,10 +53,9 @@ function ScanInner() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-2">
-        <Radar className="text-primary" size={22} />
-        <h1 className="text-2xl font-bold tracking-tight">NSE Scanner</h1>
-        <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{data?.count ?? "…"} stocks</span>
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Radar className="text-primary" size={18} />
+        <span>Screening <span className="font-medium text-foreground">{data?.count ?? "…"}</span> NSE stocks for valid swing setups</span>
       </div>
 
       <RegimeBanner regime={data?.regime}

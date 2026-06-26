@@ -41,16 +41,23 @@ function SettingsInner() {
   if (!mounted) return null;
 
   const swatch = (p: any) => (p.tokensLight?.primary || p.tokensDark?.primary || "#2563eb");
-  const refLink = ref?.code && typeof window !== "undefined" ? `${window.location.origin}${window.location.pathname.replace(/\/settings$/, "/signup")}?ref=${ref.code}` : "";
-  const copy = () => { if (refLink) { navigator.clipboard?.writeText(refLink); setCopied(true); setTimeout(() => setCopied(false), 1500); } };
+  const locale = typeof window !== "undefined" ? (window.location.pathname.split("/")[1] || "en") : "en";
+  const refLink = ref?.code && typeof window !== "undefined" ? `${window.location.origin}/${locale}/signup?ref=${ref.code}` : "";
+  const copy = async () => {
+    if (!refLink) return;
+    try {
+      if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(refLink);
+      else {
+        const ta = document.createElement("textarea");
+        ta.value = refLink; ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
+      }
+    } catch { /* link is shown on screen so the user can still copy manually */ }
+    setCopied(true); setTimeout(() => setCopied(false), 1800);
+  };
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Settings &amp; Appearance</h1>
-        <p className="text-sm text-muted-foreground">Manage your workspace theme, accent color, and typography.</p>
-      </div>
-
       <Card className="p-6">
         <div className="mb-5 flex items-center gap-2 font-semibold"><Palette size={18} className="text-primary" /> Appearance</div>
 
@@ -151,12 +158,15 @@ function SettingsInner() {
         <div className="mb-1 flex items-center gap-2 font-semibold"><Gift size={18} className="text-primary" /> Refer &amp; share</div>
         <p className="mb-4 text-sm text-muted-foreground">Share your link — friends who sign up are credited to you. {ref?.count ? <span className="font-medium text-foreground">{ref.count} joined so far.</span> : null}</p>
         <div className="flex flex-wrap items-center gap-3">
-          <code className="rounded-lg bg-muted px-3 py-2 text-sm font-semibold tracking-wider">{ref?.code || "…"}</code>
+          <input readOnly value={refLink || "Generating your link…"} onFocus={(e) => e.currentTarget.select()}
+            className="min-w-0 flex-1 rounded-lg border border-border bg-muted px-3 py-2 text-sm text-muted-foreground" />
           <button onClick={copy} disabled={!refLink}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm hover:bg-muted">
-            <Copy size={14} /> {copied ? "Copied!" : "Copy invite link"}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              copied ? "bg-success/15 text-success" : "border border-border hover:bg-muted"} disabled:opacity-50`}>
+            {copied ? <><Check size={14} /> Copied!</> : <><Copy size={14} /> Copy link</>}
           </button>
         </div>
+        <div className="mt-2 text-xs text-muted-foreground">Your code: <code className="font-semibold tracking-wider text-foreground">{ref?.code || "…"}</code></div>
         {ref?.referred?.length > 0 && (
           <div className="mt-4 space-y-1 text-xs text-muted-foreground">
             <div className="font-semibold uppercase tracking-wide">Referred</div>

@@ -32,8 +32,6 @@ function AnalyticsInner() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-bold tracking-tight">Analytics</h1>
-
       {!summary ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-24" />)}</div>
       ) : hasTrades ? (

@@ -64,7 +64,6 @@ function AnalyzeInner() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight">{t("analyze.title")}</h1>
       <form onSubmit={(e) => { e.preventDefault(); run(symbol); }} className="flex gap-2">
         <input value={symbol} onChange={(e) => setSymbol(e.target.value.toUpperCase())} placeholder={t("analyze.placeholder")}
           className="flex-1 rounded-lg border border-border bg-background/60 px-4 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />

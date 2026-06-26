@@ -72,10 +72,7 @@ function DashboardInner() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">{t("dashboard.title")}</h1>
-        {me?.name && <p className="text-sm text-muted-foreground">{t("dashboard.welcome", { name: me.name })}</p>}
-      </div>
+      {me?.name && <p className="text-sm text-muted-foreground">{t("dashboard.welcome", { name: me.name })}</p>}
 
       <MarketStatus />
 
