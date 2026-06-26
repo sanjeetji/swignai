@@ -18,12 +18,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <RequireAuth>
     <div className="min-h-screen bg-background text-foreground">
-      <header className="flex items-center justify-between border-b border-border px-6 py-3">
+      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-card/60 px-6 py-3 backdrop-blur">
         <div className="flex items-center gap-2">
-          <span className="font-semibold">SwingAI Admin</span>
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary font-bold text-primary-foreground shadow-sm shadow-primary/30">S</span>
+          <span className="font-semibold tracking-tight">SwingAI <span className="text-muted-foreground">Admin</span></span>
         </div>
         <div className="flex items-center gap-3">
-          <Link href={`/${locale}/dashboard`} className="text-sm text-muted-foreground hover:underline">← Dashboard</Link>
+          <Link href={`/${locale}/dashboard`} className="text-sm text-muted-foreground transition-colors hover:text-foreground">← Dashboard</Link>
           <LanguageSwitcher />
           <ThemeToggle />
         </div>
