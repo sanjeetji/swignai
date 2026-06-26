@@ -17,13 +17,28 @@ from .base import OHLCV_COLUMNS
 SCRIP_MASTER_URL = "https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json"
 NIFTY_TOKEN = "99926000"   # NIFTY 50 index token on NSE
 
-# Curated NSE watchlist (no exchange suffix — Angel uses bare symbols).
-# NOTE: TATAMOTORS is intentionally absent — Angel's current NSE-EQ scrip master
-# doesn't list it (2025 Tata Motors demerger); BHARTIARTL used instead (telecom).
+# Curated NSE large/mid-cap watchlist (no exchange suffix — Angel uses bare symbols).
+# A liquid subset of the Nifty universe across sectors; the scanner ranks all of these.
+# (TATAMOTORS/LTIM omitted — absent from Angel's current NSE-EQ scrip master.)
 DEFAULT_UNIVERSE = [
-    "BEL", "HAL", "ICICIBANK", "HDFCBANK", "SBIN", "SUNPHARMA", "DRREDDY", "INFY",
-    "TCS", "HCLTECH", "BHARTIARTL", "MARUTI", "LT", "NTPC", "RELIANCE", "ITC",
-    "HINDUNILVR", "AXISBANK", "M&M", "POWERGRID",
+    # Banking
+    "ICICIBANK", "HDFCBANK", "SBIN", "AXISBANK", "KOTAKBANK", "INDUSINDBK", "BANKBARODA",
+    # IT
+    "INFY", "TCS", "HCLTECH", "WIPRO", "TECHM",
+    # Auto
+    "MARUTI", "M&M", "EICHERMOT", "HEROMOTOCO", "BAJAJ-AUTO", "TVSMOTOR",
+    # Pharma
+    "SUNPHARMA", "DRREDDY", "CIPLA", "DIVISLAB", "AUROPHARMA",
+    # FMCG / Consumer
+    "ITC", "HINDUNILVR", "NESTLEIND", "BRITANNIA", "DABUR", "TITAN", "DMART", "ASIANPAINT",
+    # Energy / Power
+    "RELIANCE", "ONGC", "COALINDIA", "NTPC", "POWERGRID", "TATAPOWER",
+    # Metals
+    "TATASTEEL", "JSWSTEEL", "HINDALCO", "VEDL",
+    # Infra / Cement
+    "LT", "ULTRACEMCO", "GRASIM",
+    # Telecom / Defence / NBFC
+    "BHARTIARTL", "BEL", "HAL", "BAJFINANCE", "BAJAJFINSV", "SBILIFE", "HDFCLIFE",
 ]
 
 

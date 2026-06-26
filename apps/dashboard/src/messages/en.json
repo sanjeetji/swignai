@@ -8,7 +8,8 @@
     "journal": "Journal",
     "logout": "Logout",
     "admin": "Admin",
-    "settings": "Settings"
+    "settings": "Settings",
+    "scan": "Scanner"
   },
   "journal": {
     "title": "Trade Journal",

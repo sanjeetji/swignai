@@ -7,6 +7,8 @@ Framed as educational screening — not advice (blueprint/09).
 """
 from __future__ import annotations
 
+import json
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,7 +16,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..config import DEFAULT
 from ..core.config import settings
 from ..core.db import get_db
+from ..core.redis import cache_get, cache_set
 from ..data.factory import get_provider
+from ..data.sectors import sector_for
 from ..llm import generate_explanation
 from ..models.trading import AIPick, RegimeLog
 from ..quant import picker as picker_mod
@@ -41,6 +45,40 @@ async def sectors():
     from ..data.sectors import sectors_map
     m = sectors_map()
     return {"sectors": m, "count": len(m)}
+
+
+@router.get("/api/scan")
+async def scan(min_score: float = 0, sector: str | None = None, regime_bias: str | None = None):
+    """Scan the whole tradeable universe and rank by score (blueprint/04) — the screener.
+    Cached per day in Redis; filters (min score / sector / regime bias) applied server-side."""
+    cache_key = "scan:latest"
+    cached = await cache_get(cache_key)
+    if cached:
+        data = json.loads(cached)
+    else:
+        from ..quant.scanner import scan_universe
+        provider = get_provider(settings.DATA_PROVIDER,
+                                **({"days": 600} if settings.DATA_PROVIDER == "synthetic" else {}))
+        feats, index_close = _load_features(provider)
+        if index_close is None or len(index_close) == 0:
+            return {"date": None, "regime": "unknown", "count": 0, "results": []}
+        date = index_close.index[-1]
+        data = scan_universe(date, feats, index_close, DEFAULT)
+        data["date"] = str(date.date())
+        for r in data["results"]:
+            r["sector"] = sector_for(r["symbol"])
+        await cache_set(cache_key, json.dumps(data), ttl=60 * 60 * 6)
+
+    results = data["results"]
+    if min_score:
+        results = [r for r in results if r["score"] >= min_score]
+    if sector:
+        results = [r for r in results if (r.get("sector") or "").lower() == sector.lower()]
+    if regime_bias == "bullish":
+        results = [r for r in results if r["trend"] in ("Strong Up", "Up")]
+    elif regime_bias == "valid":
+        results = [r for r in results if r.get("valid_setup")]
+    return {"date": data.get("date"), "regime": data.get("regime"), "count": len(results), "results": results}
 
 
 def _load_features(provider):

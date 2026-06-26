@@ -6,16 +6,29 @@ and the `best_sector` analytic. Bare NSE symbols (no .NS). Extend as the univers
 from __future__ import annotations
 
 SECTORS: dict[str, str] = {
-    "BEL": "Defence", "HAL": "Defence",
+    # Banking
     "ICICIBANK": "Banking", "HDFCBANK": "Banking", "SBIN": "Banking", "AXISBANK": "Banking",
-    "SUNPHARMA": "Pharma", "DRREDDY": "Pharma",
-    "INFY": "IT", "TCS": "IT", "HCLTECH": "IT",
-    "BHARTIARTL": "Telecom",
-    "MARUTI": "Auto", "M&M": "Auto",
-    "LT": "Infrastructure",
-    "NTPC": "Power", "POWERGRID": "Power",
-    "RELIANCE": "Energy",
-    "ITC": "FMCG", "HINDUNILVR": "FMCG",
+    "KOTAKBANK": "Banking", "INDUSINDBK": "Banking", "BANKBARODA": "Banking",
+    # IT
+    "INFY": "IT", "TCS": "IT", "HCLTECH": "IT", "WIPRO": "IT", "TECHM": "IT",
+    # Auto
+    "MARUTI": "Auto", "M&M": "Auto", "EICHERMOT": "Auto", "HEROMOTOCO": "Auto",
+    "BAJAJ-AUTO": "Auto", "TVSMOTOR": "Auto",
+    # Pharma
+    "SUNPHARMA": "Pharma", "DRREDDY": "Pharma", "CIPLA": "Pharma", "DIVISLAB": "Pharma", "AUROPHARMA": "Pharma",
+    # FMCG / Consumer
+    "ITC": "FMCG", "HINDUNILVR": "FMCG", "NESTLEIND": "FMCG", "BRITANNIA": "FMCG", "DABUR": "FMCG",
+    "TITAN": "Consumer", "DMART": "Consumer", "ASIANPAINT": "Consumer",
+    # Energy / Power
+    "RELIANCE": "Energy", "ONGC": "Energy", "COALINDIA": "Energy",
+    "NTPC": "Power", "POWERGRID": "Power", "TATAPOWER": "Power",
+    # Metals
+    "TATASTEEL": "Metals", "JSWSTEEL": "Metals", "HINDALCO": "Metals", "VEDL": "Metals",
+    # Infra / Cement
+    "LT": "Infrastructure", "ULTRACEMCO": "Cement", "GRASIM": "Cement",
+    # Telecom / Defence / Finance
+    "BHARTIARTL": "Telecom", "BEL": "Defence", "HAL": "Defence",
+    "BAJFINANCE": "Finance", "BAJAJFINSV": "Finance", "SBILIFE": "Finance", "HDFCLIFE": "Finance",
 }
 
 
