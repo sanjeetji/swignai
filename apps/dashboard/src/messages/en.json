@@ -10,7 +10,8 @@
     "admin": "Admin",
     "settings": "Settings",
     "scan": "Scanner",
-    "analytics": "Analytics"
+    "analytics": "Analytics",
+    "billing": "Plans"
   },
   "journal": {
     "title": "Trade Journal",

@@ -86,6 +86,11 @@ export const api = {
 
   // user
   analytics: (token: string) => req<any>("/api/analytics", {}, token),
+  // billing
+  billingPlans: () => req<{ plans: any[]; currency: string; enabled: boolean }>("/api/billing/plans").catch(() => ({ plans: [], currency: "INR", enabled: false })),
+  subscription: (token: string) => req<any>("/api/billing/subscription", {}, token).catch(() => null),
+  createOrder: (token: string, plan: string) => req<any>("/api/billing/create-order", { method: "POST", body: JSON.stringify({ plan }) }, token),
+  verifyPayment: (token: string, body: any) => req<any>("/api/billing/verify", { method: "POST", body: JSON.stringify(body) }, token),
   equityCurve: (token: string) => req<{ closed: number; curve: any[]; distribution: any[] }>("/api/analytics/equity", {}, token).catch(() => ({ closed: 0, curve: [], distribution: [] })),
   portfolio: (token: string) => req<any>("/api/paper-trade/portfolio", {}, token),
   trades: (token: string) => req<any>("/api/trades", {}, token),
