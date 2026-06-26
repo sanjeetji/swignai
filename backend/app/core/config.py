@@ -78,6 +78,18 @@ class Settings(BaseSettings):
     REVALIDATE_URL: str = "http://localhost:9002/api/revalidate"
     REVALIDATE_TOKEN: str = "dev-revalidate-token-change-me"   # MUST match the marketing app's token
 
+    # --- email (SMTP — works with Gmail/SendGrid/SES/Resend; OFF until SMTP_HOST set) ---
+    SMTP_HOST: str | None = None
+    SMTP_PORT: int = 587
+    SMTP_USER: str | None = None
+    SMTP_PASSWORD: str | None = None
+    EMAIL_FROM: str = "SwingAI <no-reply@swingai.in>"
+
+    # --- SMS / WhatsApp (Twilio — OFF until creds set) ---
+    TWILIO_ACCOUNT_SID: str | None = None
+    TWILIO_AUTH_TOKEN: str | None = None
+    TWILIO_FROM: str | None = None            # e.g. +1xxxx (SMS) or whatsapp:+1xxxx
+
     # --- observability / Sentry (blueprint/19) — OFF until SENTRY_DSN is set ---
     SENTRY_DSN: str | None = None
     SENTRY_TRACES_SAMPLE_RATE: float = 0.0    # 0=errors only; raise in prod for perf tracing
