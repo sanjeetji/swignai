@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { LayoutDashboard, LineChart, Radar, BookOpenText, Settings, ShieldCheck, LogOut } from "lucide-react";
+import { LayoutDashboard, LineChart, Radar, BookOpenText, BarChart3, Settings, ShieldCheck, LogOut } from "lucide-react";
 import { ThemeToggle, LanguageSwitcher } from "@swingai/ui";
 import { api } from "@swingai/api-client";
 import { useAuth } from "../lib/auth";
@@ -34,6 +34,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
     { slug: "scan", label: t("nav.scan"), Icon: Radar },
     { slug: "analyze", label: t("nav.analyze"), Icon: LineChart },
     { slug: "journal", label: t("nav.journal"), Icon: BookOpenText },
+    { slug: "analytics", label: t("nav.analytics"), Icon: BarChart3 },
     { slug: "settings", label: t("nav.settings"), Icon: Settings },
     ...(isAdmin ? [{ slug: "admin", label: t("nav.admin"), Icon: ShieldCheck, admin: true } as NavItem] : []),
   ];

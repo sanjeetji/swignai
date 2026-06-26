@@ -60,6 +60,30 @@ async def my_analytics(user: User = Depends(get_current_user), db: AsyncSession 
     return _summarize(list(rows))
 
 
+@router.get("/api/analytics/equity")
+async def my_equity_curve(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Cumulative P&L (₹) and cumulative R over the user's closed trades, ordered by exit —
+    the equity curve + R-multiple distribution for the analytics charts (blueprint/20)."""
+    rows = (await db.execute(
+        select(PaperTrade).where(PaperTrade.user_id == user.id, PaperTrade.status != "open")
+        .order_by(PaperTrade.exit_date)
+    )).scalars().all()
+
+    curve, cum_pnl, cum_r = [], 0.0, 0.0
+    dist = {"≤-1R": 0, "-1..0R": 0, "0..1R": 0, "1..2R": 0, "≥2R": 0}
+    for i, t in enumerate(rows, start=1):
+        cum_pnl += float(t.pnl_inr or 0)
+        r = float(t.r_multiple or 0)
+        cum_r += r
+        curve.append({"i": i, "date": str(t.exit_date)[:10] if t.exit_date else None,
+                      "symbol": t.stock_symbol, "pnl": round(cum_pnl, 2), "r": round(cum_r, 2),
+                      "trade_r": round(r, 2)})
+        bucket = ("≤-1R" if r <= -1 else "-1..0R" if r < 0 else "0..1R" if r < 1 else "1..2R" if r < 2 else "≥2R")
+        dist[bucket] += 1
+    return {"closed": len(rows), "curve": curve,
+            "distribution": [{"bucket": k, "count": v} for k, v in dist.items()]}
+
+
 @router.get("/api/trades")
 async def my_trades(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """The user's trade journal — open + closed, with entry/exit reasons (Layer 2)."""

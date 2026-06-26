@@ -85,6 +85,7 @@ export const api = {
 
   // user
   analytics: (token: string) => req<any>("/api/analytics", {}, token),
+  equityCurve: (token: string) => req<{ closed: number; curve: any[]; distribution: any[] }>("/api/analytics/equity", {}, token).catch(() => ({ closed: 0, curve: [], distribution: [] })),
   portfolio: (token: string) => req<any>("/api/paper-trade/portfolio", {}, token),
   trades: (token: string) => req<any>("/api/trades", {}, token),
   journalReview: (token: string) => req<any>("/api/journal/review", {}, token),

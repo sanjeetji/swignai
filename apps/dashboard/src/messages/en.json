@@ -9,7 +9,8 @@
     "logout": "Logout",
     "admin": "Admin",
     "settings": "Settings",
-    "scan": "Scanner"
+    "scan": "Scanner",
+    "analytics": "Analytics"
   },
   "journal": {
     "title": "Trade Journal",
