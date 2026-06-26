@@ -295,7 +295,13 @@ async def daily_picks(limit: int = Query(5, ge=1, le=10), db: AsyncSession = Dep
     if from_db is not None:
         return from_db
 
-    # 2) fallback: compute live from the configured provider (dev/synthetic)
+    # 2) No stored picks yet. For a real provider, do NOT block this request on a live ~500-symbol
+    #    scan (it would hang + freeze the loop) — return empty fast; the dashboard's /refresh call
+    #    populates picks in the background. Live compute stays only for the offline synthetic dev mode.
+    if settings.DATA_PROVIDER != "synthetic":
+        return {"date": None, "regime": "unknown", "cash_mode": True, "source": "pending",
+                "disclaimer": DISCLAIMER, "picks": []}
+
     provider = get_provider(settings.DATA_PROVIDER,
                             **({"days": 600} if settings.DATA_PROVIDER == "synthetic" else {}))
     feats, index_close = _load_features(provider)
