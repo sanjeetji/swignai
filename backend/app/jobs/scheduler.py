@@ -25,6 +25,7 @@ def start_scheduler() -> None:
     from .daily_pipeline import run as daily_run
     from .exit_checker import run as exit_run
     from .recompute_analytics import run as analytics_run
+    from .retention import run as retention_run
     from .update_old_picks import run as resolve_run
 
     _scheduler = AsyncIOScheduler(timezone="Asia/Kolkata")
@@ -36,9 +37,11 @@ def start_scheduler() -> None:
                        replace_existing=True, misfire_grace_time=7200)
     _scheduler.add_job(analytics_run, CronTrigger(hour=20, minute=30), id="recompute_analytics",
                        replace_existing=True, misfire_grace_time=7200)
+    _scheduler.add_job(retention_run, CronTrigger(hour=3, minute=0), id="retention",
+                       replace_existing=True, misfire_grace_time=7200)
     _scheduler.start()
-    logger.info("scheduler started: daily_pipeline 15:30, exit_checker 15:45, "
-                "update_old_picks 20:00, recompute_analytics 20:30 IST")
+    logger.info("scheduler started: daily_pipeline 15:30, exit_checker 15:45, update_old_picks 20:00, "
+                "recompute_analytics 20:30, retention 03:00 IST")
 
 
 def shutdown_scheduler() -> None:

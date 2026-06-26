@@ -259,6 +259,18 @@ async def recompute_analytics(admin=Depends(require_permissions("picks.override"
     return {"ok": True, **result}
 
 
+@router.post("/run-retention")
+async def run_retention(admin=Depends(require_permissions("picks.override")),
+                        db: AsyncSession = Depends(get_db)):
+    """Manually run the DPDP retention purge (stale sessions/login history/events)."""
+    from ..jobs.retention import run as retention_run
+    result = await retention_run()
+    await ev.admin(db, "data.retention.purge", level="warning", user=admin,
+                   resource="retention", payload=result)
+    await db.commit()
+    return {"ok": True, **result}
+
+
 @router.get("/audit-log")
 async def audit_log(limit: int = Query(100, ge=1, le=500),
                     _=Depends(require_permissions("events.read")), db: AsyncSession = Depends(get_db)):

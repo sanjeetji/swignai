@@ -52,6 +52,12 @@ class Settings(BaseSettings):
     # --- geo / sessions ---
     GEOIP_ENABLED: bool = False          # IP->city lookup (blueprint/18); off in dev
 
+    # --- data retention / DPDP (blueprint/09,19) — nightly purge TTLs (days) ---
+    SESSION_RETENTION_DAYS: int = 90          # stale user_sessions rows
+    LOGIN_HISTORY_RETENTION_DAYS: int = 180   # login_history rows
+    EVENT_LOG_RETENTION_DAYS: int = 365       # ops/product events (non-audit)
+    AUDIT_LOG_RETENTION_DAYS: int = 730       # admin/security events kept longer (audit)
+
     # --- CORS (web origins) ---
     CORS_ORIGINS: list[str] = [
         "http://localhost:9001",         # dashboard (9000 series; clear of OmniMark)
