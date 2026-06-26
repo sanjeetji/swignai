@@ -1,6 +1,12 @@
 {
   "brand": { "name": "SwingAI" },
-  "nav": { "dashboard": "Dashboard", "analyze": "Analyze", "logout": "Logout", "admin": "Admin" },
+  "nav": { "dashboard": "Dashboard", "analyze": "Analyze", "journal": "Journal", "logout": "Logout", "admin": "Admin" },
+  "journal": {
+    "title": "Trade Journal", "review": "Post-trade review", "discipline": "Discipline score",
+    "noReview": "Close some paper trades to see your review.", "noTrades": "No trades yet — paper trade a pick to start.",
+    "close": "Close", "closing": "Closing…", "exitPrice": "Exit price", "reason": "Reason (optional)",
+    "open": "Open", "win": "Win", "loss": "Loss", "scratch": "Scratch"
+  },
   "dashboard": {
     "title": "Dashboard",
     "picks": "Today's Picks",

@@ -61,6 +61,7 @@ function DashboardInner() {
         <h1 className="font-semibold">{t("dashboard.title")}</h1>
         <div className="flex items-center gap-3">
           <Link href={`/${locale}/analyze`} className="text-sm text-muted-foreground hover:underline">{t("nav.analyze")}</Link>
+          <Link href={`/${locale}/journal`} className="text-sm text-muted-foreground hover:underline">{t("nav.journal")}</Link>
           <span className="hidden text-sm text-muted-foreground sm:inline">{me?.email}</span>
           <LanguageSwitcher />
           <ThemeToggle />

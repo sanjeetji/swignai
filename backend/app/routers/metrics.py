@@ -8,7 +8,7 @@ from __future__ import annotations
 from statistics import mean
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import func, select
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.db import get_db
@@ -78,6 +78,58 @@ async def track_record(db: AsyncSession = Depends(get_db)):
 async def my_analytics(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     rows = (await db.execute(select(PaperTrade).where(PaperTrade.user_id == user.id))).scalars().all()
     return _summarize(list(rows))
+
+
+@router.get("/api/trades")
+async def my_trades(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """The user's trade journal — open + closed, with entry/exit reasons (Layer 2)."""
+    rows = (await db.execute(
+        select(PaperTrade).where(PaperTrade.user_id == user.id).order_by(desc(PaperTrade.entry_date))
+    )).scalars().all()
+    return {"trades": [{
+        "id": str(t.id), "symbol": t.stock_symbol, "status": t.status,
+        "entry": float(t.entry_price), "stop": float(t.stop_loss_set or 0), "target": float(t.target_set or 0),
+        "qty": t.quantity, "exit": float(t.exit_price) if t.exit_price is not None else None,
+        "pnl_inr": float(t.pnl_inr) if t.pnl_inr is not None else None,
+        "r_multiple": float(t.r_multiple) if t.r_multiple is not None else None,
+        "entry_date": str(t.entry_date)[:10], "exit_date": str(t.exit_date)[:10] if t.exit_date else None,
+        "entry_reason": t.entry_reason, "exit_reason": t.exit_reason,
+    } for t in rows]}
+
+
+@router.get("/api/journal/review")
+async def journal_review(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Post-trade review — discipline score + honest behavioural insights (Layer 2, blueprint/00)."""
+    rows = (await db.execute(select(PaperTrade).where(PaperTrade.user_id == user.id))).scalars().all()
+    closed = [t for t in rows if t.status in ("closed_profit", "closed_loss", "scratch")]
+    if not closed:
+        return {"closed": 0, "note": "Close some paper trades to see your review."}
+
+    winners = [t for t in closed if t.status == "closed_profit"]
+    losers = [t for t in closed if t.status == "closed_loss"]
+    # winner exited BELOW its planned target = cut a winner early
+    winners_early = [t for t in winners if t.target_set and t.exit_price and float(t.exit_price) < float(t.target_set)]
+    # loss exited materially BELOW the planned stop = let a loser run past the stop
+    stop_breaks = [t for t in losers if t.stop_loss_set and t.exit_price and float(t.exit_price) < float(t.stop_loss_set) * 0.995]
+
+    n = len(closed)
+    discipline = round(100 * (1 - (len(winners_early) + len(stop_breaks)) / n))
+    insights = []
+    if winners:
+        insights.append({"key": "winners_early",
+                         "text": f"You exited {len(winners_early)} of {len(winners)} winners before their target.",
+                         "good": len(winners_early) == 0})
+    if losers:
+        insights.append({"key": "stop_breaks",
+                         "text": f"You let {len(stop_breaks)} of {len(losers)} losers run past the stop.",
+                         "good": len(stop_breaks) == 0})
+    avg_hold = round(sum((t.exit_date - t.entry_date).days for t in closed if t.exit_date) / n, 1)
+    insights.append({"key": "avg_hold", "text": f"Average hold: {avg_hold} days.", "good": True})
+
+    return {"closed": n, "discipline_score": discipline,
+            "winners_exited_early": len(winners_early), "stop_breaks": len(stop_breaks),
+            "insights": insights,
+            "note": "Discipline = trades where you followed the plan (held winners to target, respected stops)."}
 
 
 @router.get("/api/admin/metrics")

@@ -61,8 +61,12 @@ export const api = {
   // user
   analytics: (token: string) => req<any>("/api/analytics", {}, token),
   portfolio: (token: string) => req<any>("/api/paper-trade/portfolio", {}, token),
+  trades: (token: string) => req<any>("/api/trades", {}, token),
+  journalReview: (token: string) => req<any>("/api/journal/review", {}, token),
   paperBuy: (token: string, body: any) =>
     req<any>("/api/paper-trade/buy", { method: "POST", body: JSON.stringify(body) }, token),
+  paperClose: (token: string, id: string, exit_price: number, exit_reason?: string) =>
+    req<any>(`/api/paper-trade/${id}/close`, { method: "POST", body: JSON.stringify({ exit_price, exit_reason }) }, token),
 
   // admin
   adminUsers: (token: string, q = "") => req<any>(`/api/admin/users?q=${encodeURIComponent(q)}`, {}, token),
