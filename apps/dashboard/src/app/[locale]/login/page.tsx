@@ -6,7 +6,7 @@ import Link from "next/link";
 import { api } from "@swingai/api-client";
 import { Button } from "@swingai/ui";
 import { useAuth } from "../../../lib/auth";
-import { AuthShell, authInput } from "../../../components/AuthShell";
+import { AuthShell, authInput, PasswordInput } from "../../../components/AuthShell";
 
 export default function LoginPage() {
   const t = useTranslations();
@@ -39,7 +39,7 @@ export default function LoginPage() {
       }>
       <form onSubmit={submit} className="space-y-3">
         <input className={authInput} placeholder={t("auth.email")} value={email} onChange={(e) => setEmail(e.target.value)} />
-        <input type="password" className={authInput} placeholder={t("auth.password")} value={password} onChange={(e) => setPassword(e.target.value)} />
+        <PasswordInput placeholder={t("auth.password")} value={password} onChange={setPassword} />
         {error && <p className="text-sm text-destructive">{error}</p>}
         <Button type="submit" className="w-full">{t("auth.submit")}</Button>
       </form>

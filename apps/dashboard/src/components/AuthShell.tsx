@@ -1,7 +1,9 @@
 "use client";
 // Branded auth layout (blueprint/14) — gradient backdrop, logo, glass card. Shared by
 // login / signup / forgot / reset so every auth screen looks cool and consistent.
+import { useState } from "react";
 import { motion } from "framer-motion";
+import { Eye, EyeOff } from "lucide-react";
 import { ThemeToggle, LanguageSwitcher } from "@swingai/ui";
 
 export function AuthShell({ title, subtitle, children, footer }: {
@@ -40,3 +42,21 @@ export function AuthShell({ title, subtitle, children, footer }: {
 // Shared input style for auth forms.
 export const authInput =
   "w-full rounded-lg border border-border bg-background/60 px-3.5 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20";
+
+// Password field with a show/hide eye toggle.
+export function PasswordInput({ value, onChange, placeholder }: {
+  value: string; onChange: (v: string) => void; placeholder?: string;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <input type={show ? "text" : "password"} value={value} placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)} className={authInput + " pr-10"} />
+      <button type="button" tabIndex={-1} onClick={() => setShow((s) => !s)}
+        aria-label={show ? "Hide password" : "Show password"}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground">
+        {show ? <EyeOff size={16} /> : <Eye size={16} />}
+      </button>
+    </div>
+  );
+}

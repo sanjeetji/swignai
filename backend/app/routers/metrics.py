@@ -89,19 +89,55 @@ async def my_equity_curve(user: User = Depends(get_current_user), db: AsyncSessi
 
 @router.get("/api/trades")
 async def my_trades(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """The user's trade journal — open + closed, with entry/exit reasons (Layer 2)."""
+    """The user's trade journal — open + closed with full detail (Layer 2): entry/stop/targets
+    (T1=2R, T2=3R, T3=4R), entry & exit timestamps, hold days, position size, and — for open
+    positions — the live price, unrealized P&L and progress toward target/stop."""
+    from .paper import _live_prices
     rows = (await db.execute(
         select(PaperTrade).where(PaperTrade.user_id == user.id).order_by(desc(PaperTrade.entry_date))
     )).scalars().all()
-    return {"trades": [{
-        "id": str(t.id), "symbol": t.stock_symbol, "status": t.status,
-        "entry": float(t.entry_price), "stop": float(t.stop_loss_set or 0), "target": float(t.target_set or 0),
-        "qty": t.quantity, "exit": float(t.exit_price) if t.exit_price is not None else None,
-        "pnl_inr": float(t.pnl_inr) if t.pnl_inr is not None else None,
-        "r_multiple": float(t.r_multiple) if t.r_multiple is not None else None,
-        "entry_date": str(t.entry_date)[:10], "exit_date": str(t.exit_date)[:10] if t.exit_date else None,
-        "entry_reason": t.entry_reason, "exit_reason": t.exit_reason,
-    } for t in rows]}
+    prices = await _live_prices()
+    now = datetime.now(timezone.utc)
+
+    def fmt(t: PaperTrade) -> dict:
+        entry = float(t.entry_price)
+        stop = float(t.stop_loss_set or 0)
+        target = float(t.target_set or 0)
+        rps = entry - stop                       # 1R in rupees
+        end = t.exit_date or now
+        hold_days = max(0, (end - t.entry_date).days) if t.entry_date else None
+        d = {
+            "id": str(t.id), "symbol": t.stock_symbol, "status": t.status,
+            "entry": round(entry, 2), "stop": round(stop, 2), "target": round(target, 2),
+            # Deterministic ladder from the strategy (T1=2R, T2=3R, T3=4R).
+            "target_1": round(target, 2) if target else (round(entry + 2 * rps, 2) if rps > 0 else None),
+            "target_2": round(entry + 3 * rps, 2) if rps > 0 else None,
+            "target_3": round(entry + 4 * rps, 2) if rps > 0 else None,
+            "rps": round(rps, 2),
+            "qty": t.quantity, "position_size": float(t.position_size_inr or 0),
+            "exit": float(t.exit_price) if t.exit_price is not None else None,
+            "pnl_inr": float(t.pnl_inr) if t.pnl_inr is not None else None,
+            "pnl_percent": float(t.pnl_percent) if t.pnl_percent is not None else None,
+            "r_multiple": float(t.r_multiple) if t.r_multiple is not None else None,
+            "entry_at": t.entry_date.isoformat() if t.entry_date else None,
+            "exit_at": t.exit_date.isoformat() if t.exit_date else None,
+            "entry_date": str(t.entry_date)[:10] if t.entry_date else None,
+            "exit_date": str(t.exit_date)[:10] if t.exit_date else None,
+            "hold_days": hold_days,
+            "entry_reason": t.entry_reason, "exit_reason": t.exit_reason,
+        }
+        if t.status == "open":
+            cur = prices.get(t.stock_symbol)
+            d["current_price"] = round(cur, 2) if cur is not None else None
+            if cur is not None and rps > 0:
+                d["unrealized_inr"] = round((cur - entry) * t.quantity, 2)
+                d["unrealized_pct"] = round((cur - entry) / entry * 100.0, 2) if entry else 0
+                d["r_now"] = round((cur - entry) / rps, 2)
+                span = target - entry
+                d["pct_to_target"] = round(max(0, min(100, (cur - entry) / span * 100.0))) if span > 0 else 0
+        return d
+
+    return {"trades": [fmt(t) for t in rows]}
 
 
 @router.get("/api/journal/review")

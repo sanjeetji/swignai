@@ -6,7 +6,7 @@ import Link from "next/link";
 import { api } from "@swingai/api-client";
 import { Button } from "@swingai/ui";
 import { useAuth } from "../../../lib/auth";
-import { AuthShell, authInput } from "../../../components/AuthShell";
+import { AuthShell, authInput, PasswordInput } from "../../../components/AuthShell";
 
 export default function ResetPasswordPage() {
   // useSearchParams() must be under a Suspense boundary (Next.js requirement).
@@ -41,7 +41,7 @@ function ResetPasswordInner() {
         <p className="text-sm text-destructive">{t("auth.resetNoToken")}</p>
       ) : (
         <form onSubmit={submit} className="space-y-3">
-          <input type="password" className={authInput} placeholder={t("auth.newPassword")} value={password} onChange={(e) => setPassword(e.target.value)} />
+          <PasswordInput placeholder={t("auth.newPassword")} value={password} onChange={setPassword} />
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button type="submit" className="w-full">{t("auth.resetSubmit")}</Button>
         </form>
