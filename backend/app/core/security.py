@@ -70,6 +70,21 @@ async def get_current_user(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User not found")
     if user.is_blocked:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Account suspended")
+
+    # Session enforcement: tokens minted by /auth carry a session id (sid). If that
+    # session was force-logged-out, revoked, or expired, the token is dead even though
+    # its JWT exp hasn't passed. Legacy tokens without sid stay valid (backward-compat).
+    sid = payload.get("sid")
+    if sid:
+        from ..models.session import UserSession  # local import to avoid cycles
+        sess = await db.get(UserSession, uuid.UUID(sid))
+        now = datetime.now(timezone.utc)
+        exp = sess.expires_at if sess else None
+        if exp is not None and exp.tzinfo is None:
+            exp = exp.replace(tzinfo=timezone.utc)
+        if (sess is None or not sess.is_active or sess.revoked_at is not None
+                or (exp is not None and exp < now)):
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Session expired or revoked")
     return user
 
 

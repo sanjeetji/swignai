@@ -15,7 +15,7 @@ from ..core.db import get_db
 from ..core.security import require_permissions
 from ..models.event import EventLog
 from ..models.platform import Integration, PlatformSetting
-from ..models.session import UserBlock, UserSession
+from ..models.session import LoginHistory, UserBlock, UserSession
 from ..models.user import User
 from ..schemas import AppearanceIn, IntegrationIn
 from ..services import event_log as ev
@@ -89,6 +89,38 @@ async def unblock_user(user_id: str, admin=Depends(require_permissions("users.bl
     await ev.admin(db, "user.unblocked", user=admin, resource="user", resource_id=user.id)
     await db.commit()
     return {"id": str(user.id), "blocked": False}
+
+
+@router.get("/users/{user_id}")
+async def user_detail(user_id: str, _=Depends(require_permissions("users.read")),
+                      db: AsyncSession = Depends(get_db)):
+    """Profile + active/recent sessions (IP, geo, device) + recent login history (blueprint/18)."""
+    user = await db.get(User, uuid.UUID(user_id))
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    sessions = (await db.execute(
+        select(UserSession).where(UserSession.user_id == user.id)
+        .order_by(desc(UserSession.created_at)).limit(20)
+    )).scalars().all()
+    logins = (await db.execute(
+        select(LoginHistory).where(LoginHistory.user_id == user.id)
+        .order_by(desc(LoginHistory.created_at)).limit(20)
+    )).scalars().all()
+    return {
+        "id": str(user.id), "email": user.email, "name": user.name,
+        "tier": user.subscription_tier, "blocked": user.is_blocked,
+        "capital_amount": float(user.capital_amount), "risk_pct": float(user.risk_pct),
+        "created_at": str(user.created_at),
+        "sessions": [
+            {"id": str(s.id), "ip": s.ip, "geo": s.geo, "device": s.device, "browser": s.browser,
+             "os": s.os, "active": s.is_active, "last_active_at": str(s.last_active_at) if s.last_active_at else None,
+             "created_at": str(s.created_at)} for s in sessions
+        ],
+        "login_history": [
+            {"ip": h.ip, "geo": h.geo, "device": h.device, "success": h.success,
+             "reason": h.reason, "at": str(h.created_at)} for h in logins
+        ],
+    }
 
 
 # ---------------- Appearance / settings (blueprint/16) ----------------
