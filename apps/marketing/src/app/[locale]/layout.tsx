@@ -5,6 +5,8 @@ import { getMessages } from "next-intl/server";
 import { ThemeProvider } from "@swingai/ui";
 import { api } from "@swingai/api-client";
 import { Header } from "../../components/Header";
+import { Footer } from "../../components/Footer";
+import { ConsentBanner } from "../../components/ConsentBanner";
 
 export async function generateMetadata(): Promise<Metadata> {
   const brand = await api.brand().catch(() => null);
@@ -37,6 +39,8 @@ export default async function LocaleLayout({
           <ThemeProvider presets={appearance?.presets ?? []} defaults={appearance?.defaults}>
             <Header />
             {children}
+            <Footer locale={locale} />
+            <ConsentBanner />
           </ThemeProvider>
         </NextIntlClientProvider>
       </body>
