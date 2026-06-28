@@ -27,6 +27,8 @@ start() {
   ensure_docker || exit 1   # ensures the runtime is up (no-op if already running)
   install_deps
   clean_next                # always start dev with a clean .next (avoids vendor-chunks error)
+  ensure_port_free "$DASHBOARD_PORT" "dashboard"   # clear stale holders so next dev can bind
+  ensure_port_free "$MARKETING_PORT" "marketing"
   log "Starting marketing (:$MARKETING_PORT) + dashboard (:$DASHBOARD_PORT)…"
   ( cd "$ROOT_DIR" && NEXT_PUBLIC_API_BASE="http://localhost:$BACKEND_PORT" \
       NEXT_PUBLIC_DASHBOARD_URL="http://localhost:$DASHBOARD_PORT" \

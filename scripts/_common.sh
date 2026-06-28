@@ -58,6 +58,19 @@ port_listening() { lsof -i ":$1" -sTCP:LISTEN -P -n &>/dev/null; }
 
 pid_alive() { [ -f "$1" ] && kill -0 "$(cat "$1")" 2>/dev/null; }
 
+# Free a port held by a STALE process before we (re)start a service — prevents a cryptic
+# "address already in use" bind failure when a previous run was killed but left a zombie on
+# the port. Safe: callers invoke this on `start` only AFTER confirming our own pidfile says
+# we're NOT running, so it never kills a legitimately-running instance.
+ensure_port_free() {  # $1=port  $2=label
+  local pids; pids=$(lsof -ti ":$1" -sTCP:LISTEN 2>/dev/null) || true
+  if [ -n "$pids" ]; then
+    warn "port $1 (${2:-service}) held by a stale process — clearing it"
+    echo "$pids" | xargs kill -9 2>/dev/null || true
+    sleep 1
+  fi
+}
+
 # HTTP check — 0 if the URL answers (2xx/3xx) within the timeout. Used for real health probes.
 http_ok() { curl -sf -o /dev/null --max-time "${2:-4}" "$1" 2>/dev/null; }
 

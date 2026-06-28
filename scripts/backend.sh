@@ -10,6 +10,7 @@ start() {
   if pid_alive "$PIDF"; then warn "backend already running (pid $(cat "$PIDF"))"; return 0; fi
   ensure_docker || exit 1   # backend connects to the Dockerized Postgres
   ensure_venv
+  ensure_port_free "$BACKEND_PORT" "backend"   # clear a stale holder so uvicorn can bind
   log "Starting FastAPI on :$BACKEND_PORT (DB=$DATABASE_URL)…"
   ( cd "$BACKEND_DIR" && DATABASE_URL="$DATABASE_URL" REDIS_URL="$REDIS_URL" \
       nohup "$VENV_DIR/bin/uvicorn" app.main:app --host 0.0.0.0 --port "$BACKEND_PORT" \
