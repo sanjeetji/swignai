@@ -12,3 +12,4 @@ from .cms import (  # noqa: F401
 )
 from .billing import Plan, Subscription, Payment, Notification  # noqa: F401
 from .referral import ReferralCode, Referral  # noqa: F401
+from .watchlist import Watchlist, PriceAlert  # noqa: F401

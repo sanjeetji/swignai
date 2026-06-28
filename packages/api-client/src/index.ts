@@ -160,6 +160,18 @@ export const api = {
   portfolio: (token: string) => req<any>("/api/paper-trade/portfolio", {}, token),
   trades: (token: string) => req<any>("/api/trades", {}, token),
   journalReview: (token: string) => req<any>("/api/journal/review", {}, token),
+  // Watchlist + price alerts + digest preference (retention)
+  watchlist: (token: string) => req<any>("/api/watchlist", {}, token).catch(() => ({ items: [] })),
+  watchAdd: (token: string, symbol: string) => req<any>("/api/watchlist", { method: "POST", body: JSON.stringify({ symbol }) }, token),
+  watchRemove: (token: string, symbol: string) => req<any>(`/api/watchlist/${encodeURIComponent(symbol)}`, { method: "DELETE" }, token),
+  alerts: (token: string) => req<any>("/api/alerts", {}, token).catch(() => ({ alerts: [] })),
+  alertCreate: (token: string, body: { symbol: string; direction: string; target_price: number }) =>
+    req<any>("/api/alerts", { method: "POST", body: JSON.stringify(body) }, token),
+  alertDelete: (token: string, id: string) => req<any>(`/api/alerts/${id}`, { method: "DELETE" }, token),
+  setDigest: (token: string, email_digest: boolean) =>
+    req<any>("/api/me/digest", { method: "PUT", body: JSON.stringify({ email_digest }) }, token),
+  getPrefs: (token: string) => req<any>("/api/me/preferences", {}, token).catch(() => ({})),
+
   paperBuy: (token: string, body: any) =>
     req<any>("/api/paper-trade/buy", { method: "POST", body: JSON.stringify(body) }, token),
   paperClose: (token: string, id: string, exit_price: number, exit_reason?: string) =>

@@ -14,6 +14,7 @@ from ..core.config import settings
 from ..core.db import SessionLocal
 from ..data.factory import get_provider
 from ..models.trading import PaperTrade
+from ..models.watchlist import PriceAlert
 from ..services import event_log as ev
 from ..services.notify import push as push_notification
 
@@ -67,5 +68,35 @@ async def run() -> dict:
         if closed:
             await ev.system(db, "exit_checker.triggered", payload={"closed": closed})
         await db.commit()
-    logger.info("exit_checker: closed %s trades", closed)
-    return {"closed": closed}
+        fired = await _check_alerts(db, provider)
+    logger.info("exit_checker: closed %s trades, fired %s alerts", closed, fired)
+    return {"closed": closed, "alerts": fired}
+
+
+async def _check_alerts(db, provider) -> int:
+    """Fire any active price alert whose target has been crossed (once, then deactivate)."""
+    alerts = (await db.execute(select(PriceAlert).where(PriceAlert.is_active == True))).scalars().all()  # noqa: E712
+    if not alerts:
+        return 0
+    px_cache: dict[str, float | None] = {}
+    fired = 0
+    for a in alerts:
+        if a.symbol not in px_cache:
+            px_cache[a.symbol] = _latest_price(provider, a.symbol)
+        px = px_cache[a.symbol]
+        if px is None:
+            continue
+        crossed = (a.direction == "above" and px >= a.target_price) or \
+                  (a.direction == "below" and px <= a.target_price)
+        if not crossed:
+            continue
+        a.is_active = False
+        a.triggered_at = datetime.now(timezone.utc)
+        await push_notification(db, a.user_id, "price.alert", {
+            "symbol": a.symbol, "direction": a.direction,
+            "target": round(a.target_price, 2), "price": round(px, 2),
+        })
+        fired += 1
+    if fired:
+        await db.commit()
+    return fired

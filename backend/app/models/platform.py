@@ -48,6 +48,7 @@ class UserPreference(Base, TimestampMixin):
     theme_preset: Mapped[str | None] = mapped_column(String(40))
     font: Mapped[str | None] = mapped_column(String(40))
     locale: Mapped[str | None] = mapped_column(String(8))
+    email_digest: Mapped[bool] = mapped_column(Boolean, default=True)   # daily picks + weekly perf email
 
 
 class FeatureFlag(Base, TimestampMixin):

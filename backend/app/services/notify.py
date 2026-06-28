@@ -25,6 +25,15 @@ def _format(type_: str, payload: dict) -> tuple[str, str]:
                 f"Your paper trade {sym} closed ({outcome}). "
                 f"Exit ₹{payload.get('exit')}, P&L ₹{payload.get('pnl_inr')} "
                 f"({payload.get('r_multiple')}R). Educational tracking — not advice.")
+    if type_ == "price.alert":
+        return (f"SwingAI: {sym} {payload.get('direction')} ₹{payload.get('target')}",
+                f"{sym} is now ₹{payload.get('price')} — crossed your "
+                f"{payload.get('direction')} ₹{payload.get('target')} alert. "
+                f"Educational analysis, not advice.")
+    if type_ == "digest.daily":
+        return (payload.get("subject", "SwingAI — today's picks"), payload.get("body", ""))
+    if type_ == "digest.weekly":
+        return (payload.get("subject", "SwingAI — your week"), payload.get("body", ""))
     return (f"SwingAI: {type_}", "; ".join(f"{k}={v}" for k, v in payload.items()))
 
 

@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { LayoutDashboard, LineChart, Radar, BookOpenText, BarChart3, CreditCard, Settings, ShieldCheck, LogOut } from "lucide-react";
+import { LayoutDashboard, LineChart, Radar, BookOpenText, BarChart3, CreditCard, Settings, ShieldCheck, LogOut, Star } from "lucide-react";
 import { ThemeToggle, LanguageSwitcher } from "@swingai/ui";
 import { api } from "@swingai/api-client";
 import { useAuth } from "../lib/auth";
@@ -23,6 +23,7 @@ const PAGE_META: Record<string, { title: string; sub: string }> = {
   analyze: { title: "Analyze", sub: "Deep-dive any stock's swing setup" },
   journal: { title: "Journal", sub: "Your trades & post-trade review" },
   analytics: { title: "Analytics", sub: "Expectancy, win rate & equity curve" },
+  watchlist: { title: "Watchlist & Alerts", sub: "Track stocks & get price alerts" },
   billing: { title: "Plans & Billing", sub: "Manage your subscription & payments" },
   settings: { title: "Settings & Appearance", sub: "Theme, language, security & referrals" },
   admin: { title: "Admin Console", sub: "Platform management" },
@@ -66,6 +67,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
     { slug: "analyze", label: t("nav.analyze"), Icon: LineChart },
     { slug: "journal", label: t("nav.journal"), Icon: BookOpenText },
     { slug: "analytics", label: t("nav.analytics"), Icon: BarChart3 },
+    { slug: "watchlist", label: t("nav.watchlist"), Icon: Star },
     { slug: "billing", label: t("nav.billing"), Icon: CreditCard },
     { slug: "settings", label: t("nav.settings"), Icon: Settings },
     ...(isAdmin ? [{ slug: "admin", label: t("nav.admin"), Icon: ShieldCheck, admin: true } as NavItem] : []),

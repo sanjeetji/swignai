@@ -31,8 +31,9 @@ class PrefsIn(BaseModel):
 async def get_prefs(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     p = await db.get(UserPreference, user.id)
     if not p:
-        return {"theme_mode": None, "theme_preset": None, "font": None, "locale": None}
-    return {"theme_mode": p.theme_mode, "theme_preset": p.theme_preset, "font": p.font, "locale": p.locale}
+        return {"theme_mode": None, "theme_preset": None, "font": None, "locale": None, "email_digest": True}
+    return {"theme_mode": p.theme_mode, "theme_preset": p.theme_preset, "font": p.font,
+            "locale": p.locale, "email_digest": p.email_digest}
 
 
 @router.put("/preferences")
