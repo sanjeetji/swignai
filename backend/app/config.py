@@ -27,6 +27,14 @@ class StrategyConfig:
     atr_min_pct: float = 1.5             # volatility floor (% of price)
     atr_max_pct: float = 5.0             # volatility ceiling
     min_rr: float = 2.0                  # a valid stop must allow >= this reward:risk
+    # optional signal gates (0/False/≥1.5 = OFF; enabled only if walk-forward proves OOS edge).
+    # ADX≥25 ADOPTED after round-2 walk-forward (research_edge.py): the only gate positive in
+    # EVERY window — it flips the recent 2024–26 out-of-sample window +0.135→+0.157R avg and
+    # −0.014→+0.015R recent (only trade stocks in a genuine strong trend). OBV/Bollinger rejected
+    # (inconsistent across windows / negative recent window = overfit). Kept as knobs for future research.
+    adx_min: float = 25.0                # require ADX(14) >= X (trend strength); 0 = off
+    require_obv_accum: bool = False      # require OBV accumulation (volume confirming the move)
+    bb_max_pct_b: float = 1.5            # reject if Bollinger %b > X (band over-extension); ≥1.5 = off
 
     # --- STAGE 2: weighted score (must sum to 100) ---
     w_rel_strength: float = 25.0

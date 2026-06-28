@@ -35,6 +35,14 @@ def passes_knockouts(row: pd.Series, cfg: StrategyConfig) -> FilterResult:
     plan = risk.build_trade_plan(row, capital=100000.0, cfg=cfg)
     flags["valid_stop_rr"] = bool(plan is not None and plan.rr_ratio >= cfg.min_rr)
 
+    # optional, walk-forward-gated signal filters (no-ops at default config)
+    if cfg.adx_min > 0:
+        flags["trend_strength"] = bool(float(row.get("adx", float("nan"))) >= cfg.adx_min)
+    if cfg.require_obv_accum:
+        flags["accumulation"] = bool(row.get("obv_slope_up", False))
+    if cfg.bb_max_pct_b < 1.5:
+        flags["not_band_extended"] = bool(float(row.get("bb_pct_b", float("inf"))) <= cfg.bb_max_pct_b)
+
     # any NaN in a flag means insufficient history -> fail
     failing = [name for name, ok in flags.items() if not ok]
     passed = len(failing) == 0

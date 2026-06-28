@@ -52,11 +52,15 @@ class CachedProvider:
 
 
 VARIANTS = {
-    "baseline (ext≤8, rsi≤65)": DEFAULT,
-    "tight_ext (≤3%)": replace(DEFAULT, max_extension_pct=3.0),
-    "no_overbought (ext≤4, rsi≤60)": replace(DEFAULT, max_extension_pct=4.0, rsi_high=60.0),
-    "pullback (ext≤2.5, rsi≤58, atr≤4)": replace(DEFAULT, max_extension_pct=2.5, rsi_high=58.0, atr_max_pct=4.0),
-    "strong_trend (ext≤4, rr≥2.5)": replace(DEFAULT, max_extension_pct=4.0, min_rr=2.5, target_1_r=2.5),
+    "baseline (current DEFAULT)": DEFAULT,
+    # --- round 2: new signal gates (ADX / OBV / Bollinger) — keep only if OOS-positive ---
+    "adx>=20 (trend strength)": replace(DEFAULT, adx_min=20.0),
+    "adx>=25 (strong trend)": replace(DEFAULT, adx_min=25.0),
+    "obv_accum (volume confirms)": replace(DEFAULT, require_obv_accum=True),
+    "bb%b<=0.95 (not band-extended)": replace(DEFAULT, bb_max_pct_b=0.95),
+    "adx>=20 + obv_accum": replace(DEFAULT, adx_min=20.0, require_obv_accum=True),
+    "adx>=20 + bb%b<=0.95": replace(DEFAULT, adx_min=20.0, bb_max_pct_b=0.95),
+    "all three (adx20+obv+bb)": replace(DEFAULT, adx_min=20.0, require_obv_accum=True, bb_max_pct_b=0.95),
 }
 
 
