@@ -220,3 +220,38 @@ async def admin_metrics(_=Depends(require_permissions("analytics.view")), db: As
         "conversion_pct": round(paying / users * 100, 1) if users else 0,
         "note": "Live from subscriptions + payments.",
     }
+
+
+@router.get("/api/admin/metrics/series")
+async def admin_metrics_series(days: int = 30, _=Depends(require_permissions("analytics.view")),
+                               db: AsyncSession = Depends(get_db)):
+    """Daily signups + captured revenue over the last N days, plus the plan mix — drives the
+    admin overview charts. All real, computed from users/payments/subscriptions."""
+    from collections import defaultdict
+    from datetime import timedelta
+    from ..models.billing import Payment
+    now = datetime.now(timezone.utc)
+    start = now - timedelta(days=days - 1)
+
+    signups = (await db.execute(select(User.created_at).where(User.created_at >= start))).scalars().all()
+    pays = (await db.execute(
+        select(Payment.amount_inr, Payment.created_at).where(Payment.status == "captured", Payment.created_at >= start)
+    )).all()
+
+    su: dict[str, int] = defaultdict(int)
+    rev: dict[str, float] = defaultdict(float)
+    for c in signups:
+        if c:
+            su[str(c.date())] += 1
+    for amt, c in pays:
+        if c:
+            rev[str(c.date())] += float(amt)
+
+    series = []
+    for i in range(days):
+        d = str((start + timedelta(days=i)).date())
+        series.append({"date": d[5:], "signups": su.get(d, 0), "revenue": round(rev.get(d, 0))})
+
+    mix = (await db.execute(select(User.subscription_tier, func.count()).group_by(User.subscription_tier))).all()
+    plan_mix = [{"plan": (t or "free"), "count": c} for t, c in mix]
+    return {"series": series, "plan_mix": plan_mix, "days": days}

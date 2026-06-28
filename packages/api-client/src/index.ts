@@ -172,6 +172,7 @@ export const api = {
   adminCreateUser: (token: string, body: { email: string; name?: string; password: string; role?: string; plan?: string }) =>
     req<any>("/api/admin/users", { method: "POST", body: JSON.stringify(body) }, token),
   adminMetrics: (token: string) => req<any>("/api/admin/metrics", {}, token),
+  adminMetricsSeries: (token: string, days = 30) => req<any>(`/api/admin/metrics/series?days=${days}`, {}, token).catch(() => ({ series: [], plan_mix: [] })),
   blockUser: (token: string, id: string) => req<any>(`/api/admin/users/${id}/block`, { method: "POST" }, token),
   unblockUser: (token: string, id: string) => req<any>(`/api/admin/users/${id}/unblock`, { method: "POST" }, token),
   forceLogout: (token: string, id: string) => req<any>(`/api/admin/users/${id}/force-logout`, { method: "POST" }, token),
