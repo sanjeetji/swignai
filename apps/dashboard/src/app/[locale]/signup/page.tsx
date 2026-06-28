@@ -52,7 +52,7 @@ function SignupInner() {
       setSession(tk.access_token, tk.refresh_token);
       const token = tk.access_token;
       if (plan === "trial") { try { await api.startTrial(token); } catch { /* keep going */ } router.push(`/${locale}/dashboard`); }
-      else if (selected && selected.price > 0) router.push(`/${locale}/billing`);   // checkout
+      else if (selected && selected.price > 0) router.push(`/${locale}/billing?checkout=${plan}`);   // auto-open Razorpay
       else { try { await api.activateFree(token); } catch { /* keep going */ } router.push(`/${locale}/dashboard`); }
     } catch (e: any) {
       setError(String(e?.message || "").includes("409") ? t("auth.exists") : t("auth.invalid"));

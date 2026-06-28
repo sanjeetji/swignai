@@ -1,7 +1,8 @@
 "use client";
 // Billing / Upgrade (blueprint/20) — plans + Razorpay Checkout. create-order on the
 // server, open Checkout, verify the signed result, activate the tier.
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Check, Crown, Sparkles } from "lucide-react";
 import { api } from "@swingai/api-client";
 import { Card, Button } from "@swingai/ui";
@@ -26,11 +27,22 @@ function BillingInner() {
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
+  const checkoutPlan = useSearchParams().get("checkout");   // ?checkout=pro → auto-open from signup
+  const autoOpened = useRef(false);
+
   const load = useCallback(() => {
     api.billingPlans().then(setData).catch(() => {});
     if (token) api.subscription(token).then(setSub).catch(() => {});
   }, [token]);
   useEffect(() => { load(); }, [load]);
+
+  // Auto-open Razorpay for the plan chosen at signup (paid path) once plans + token are ready.
+  useEffect(() => {
+    if (autoOpened.current || !token || !checkoutPlan || !data?.plans?.length) return;
+    const p = data.plans.find((x: any) => x.id === checkoutPlan && (x.price_inr ?? 0) > 0);
+    if (p) { autoOpened.current = true; subscribe(p.id, p.price_inr); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, checkoutPlan, data]);
 
   async function subscribe(plan: string, price: number) {
     if (!token) return;
@@ -129,5 +141,6 @@ function BillingInner() {
 }
 
 export default function BillingPage() {
-  return <DashboardShell><BillingInner /></DashboardShell>;
+  // Suspense: BillingInner uses useSearchParams (Next.js requirement).
+  return <DashboardShell><Suspense fallback={null}><BillingInner /></Suspense></DashboardShell>;
 }

@@ -24,6 +24,8 @@ export default function AdminUsers() {
   const [form, setForm] = useState(blank);
   const [createMsg, setCreateMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [creating, setCreating] = useState(false);
+  const [sel, setSel] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const load = useCallback(() => {
     if (!token) return;
@@ -60,11 +62,33 @@ export default function AdminUsers() {
 
   const inp = "rounded-md border border-border bg-transparent px-3 py-2 text-sm";
 
+  function toggleSel(id: string) {
+    setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  }
+  async function bulk(fn: (id: string) => Promise<any>) {
+    if (!token || sel.size === 0) return;
+    setBulkBusy(true);
+    try { await Promise.all([...sel].map((id) => fn(id).catch(() => {}))); setSel(new Set()); load(); }
+    finally { setBulkBusy(false); }
+  }
+  async function exportCsv() {
+    if (!token) return;
+    try {
+      const csv = await api.adminExportUsers(token, { q, role: fRole, plan: fPlan, status: fStatus });
+      const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+      const a = document.createElement("a"); a.href = url; a.download = "swingai-users.csv"; a.click();
+      URL.revokeObjectURL(url);
+    } catch { /* ignore */ }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-bold tracking-tight">Users ({data?.total ?? "…"})</h1>
-        <Button size="sm" onClick={() => setShowCreate((s) => !s)}>{showCreate ? "Close" : "+ Create user"}</Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={exportCsv}>Export CSV</Button>
+          <Button size="sm" onClick={() => setShowCreate((s) => !s)}>{showCreate ? "Close" : "+ Create user"}</Button>
+        </div>
       </div>
 
       {showCreate && (
@@ -108,10 +132,25 @@ export default function AdminUsers() {
           <option value="">Any status</option><option value="active">Active</option><option value="blocked">Blocked</option>
         </select>
       </div>
+      {sel.size > 0 && (
+        <Card className="flex flex-wrap items-center gap-2 p-3 text-sm">
+          <span className="font-medium">{sel.size} selected</span>
+          <Button size="sm" variant="outline" disabled={bulkBusy} onClick={() => token && bulk((id) => api.blockUser(token, id))}>Block</Button>
+          <Button size="sm" variant="outline" disabled={bulkBusy} onClick={() => token && bulk((id) => api.unblockUser(token, id))}>Unblock</Button>
+          <span className="text-muted-foreground">· set plan:</span>
+          {["free", "trial", "pro", "premium"].map((pl) => (
+            <Button key={pl} size="sm" variant="ghost" disabled={bulkBusy} onClick={() => token && bulk((id) => api.adminSetPlan(token, id, pl, 30))}>{pl}</Button>
+          ))}
+          <Button size="sm" variant="ghost" onClick={() => setSel(new Set())}>Clear</Button>
+        </Card>
+      )}
       <Card className="divide-y divide-border">
         {data?.users?.map((u: any) => (
           <div key={u.id} className="px-4 py-3 text-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+              <input type="checkbox" checked={sel.has(u.id)} onChange={() => toggleSel(u.id)}
+                className="h-4 w-4 shrink-0 accent-[var(--primary)]" aria-label="select user" />
               <button className="text-left" onClick={() => openDetail(u.id)}>
                 <div className="flex flex-wrap items-center gap-1.5">
                   <span>{u.email}</span>
@@ -125,6 +164,7 @@ export default function AdminUsers() {
                   joined {String(u.created_at).slice(0, 10)} · {open === u.id ? "▲ hide" : "▼ sessions"}
                 </div>
               </button>
+              </div>
               <div className="flex gap-2">
                 {u.blocked
                   ? <Button size="sm" variant="outline" onClick={() => token && act(api.unblockUser(token, u.id))}>Unblock</Button>

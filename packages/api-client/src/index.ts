@@ -180,6 +180,13 @@ export const api = {
     req<any>("/api/admin/users", { method: "POST", body: JSON.stringify(body) }, token),
   adminMetrics: (token: string) => req<any>("/api/admin/metrics", {}, token),
   adminMetricsSeries: (token: string, days = 30) => req<any>(`/api/admin/metrics/series?days=${days}`, {}, token).catch(() => ({ series: [], plan_mix: [] })),
+  adminExportUsers: async (token: string, params: { q?: string; role?: string; plan?: string; status?: string } = {}) => {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => { if (v) qs.set(k, v); });
+    const res = await fetch(`${API_BASE}/api/admin/users/export?${qs.toString()}`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) throw new Error(`API ${res.status}`);
+    return res.text();
+  },
   adminSetPlan: (token: string, id: string, plan: string, days = 30) =>
     req<any>(`/api/admin/users/${id}/plan`, { method: "POST", body: JSON.stringify({ plan, days }) }, token),
   adminPayments: (token: string, limit = 50) => req<any>(`/api/admin/payments?limit=${limit}`, {}, token).catch(() => ({ payments: [] })),

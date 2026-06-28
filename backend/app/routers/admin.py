@@ -172,6 +172,48 @@ async def list_payments(limit: int = 50, _=Depends(require_permissions("analytic
     ]}
 
 
+@router.get("/users/export")
+async def export_users(q: str | None = None, role: str | None = None, plan: str | None = None,
+                       status: str | None = None, _=Depends(require_permissions("users.read")),
+                       db: AsyncSession = Depends(get_db)):
+    """Download all matching users as CSV (respects the same filters as the list)."""
+    import csv
+    import io
+    from collections import defaultdict
+    from ..models.user import Role, UserRole
+
+    stmt = select(User)
+    if q:
+        stmt = stmt.where(User.email.ilike(f"%{q}%"))
+    if plan:
+        stmt = stmt.where(User.subscription_tier == plan)
+    if status == "blocked":
+        stmt = stmt.where(User.is_blocked == True)  # noqa: E712
+    elif status == "active":
+        stmt = stmt.where(User.is_blocked == False)  # noqa: E712
+    if role:
+        rsub = select(UserRole.user_id).join(Role, Role.id == UserRole.role_id).where(Role.name == role)
+        stmt = stmt.where(User.id.in_(rsub))
+    rows = (await db.execute(stmt.order_by(desc(User.created_at)))).scalars().all()
+
+    rolemap: dict = defaultdict(list)
+    ids = [u.id for u in rows]
+    if ids:
+        for uid, rn in (await db.execute(
+            select(UserRole.user_id, Role.name).join(Role, Role.id == UserRole.role_id).where(UserRole.user_id.in_(ids))
+        )).all():
+            rolemap[uid].append(rn)
+
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["email", "name", "plan", "roles", "blocked", "created_at"])
+    for u in rows:
+        w.writerow([u.email, u.name or "", u.subscription_tier or "free",
+                    "|".join(rolemap.get(u.id, [])), "yes" if u.is_blocked else "no", str(u.created_at)])
+    return Response(content=buf.getvalue(), media_type="text/csv",
+                    headers={"Content-Disposition": "attachment; filename=swingai-users.csv"})
+
+
 @router.post("/users/{user_id}/block")
 async def block_user(user_id: str, req: Request, admin=Depends(require_permissions("users.block")),
                      db: AsyncSession = Depends(get_db)):
