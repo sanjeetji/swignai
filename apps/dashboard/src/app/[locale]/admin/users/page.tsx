@@ -16,6 +16,11 @@ export default function AdminUsers() {
   const [denied, setDenied] = useState(false);
   const [open, setOpen] = useState<string | null>(null);   // expanded user id
   const [detail, setDetail] = useState<any>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const blank = { email: "", name: "", password: "", role: "user", plan: "free" };
+  const [form, setForm] = useState(blank);
+  const [createMsg, setCreateMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const load = useCallback(() => {
     if (!token) return;
@@ -35,9 +40,58 @@ export default function AdminUsers() {
 
   async function act(fn: Promise<any>) { try { await fn; load(); if (open && token) setDetail(await api.adminUserDetail(token, open)); } catch {} }
 
+  async function createUser(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token) return;
+    setCreateMsg(null);
+    if (form.password.length < 8) { setCreateMsg({ ok: false, text: "Password must be ≥ 8 characters" }); return; }
+    setCreating(true);
+    try {
+      await api.adminCreateUser(token, form);
+      setCreateMsg({ ok: true, text: `Created ${form.email} (${form.role}, ${form.plan})` });
+      setForm(blank); load();
+    } catch (err: any) {
+      setCreateMsg({ ok: false, text: String(err?.message || "").includes("403") ? "Only a super admin can create admin users" : String(err?.message || "Failed").slice(0, 120) });
+    } finally { setCreating(false); }
+  }
+
+  const inp = "rounded-md border border-border bg-transparent px-3 py-2 text-sm";
+
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Users ({data?.total ?? "…"})</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-xl font-semibold">Users ({data?.total ?? "…"})</h1>
+        <Button size="sm" onClick={() => setShowCreate((s) => !s)}>{showCreate ? "Close" : "+ Create user"}</Button>
+      </div>
+
+      {showCreate && (
+        <Card className="p-4">
+          <div className="mb-3 text-sm font-medium">Create a new user</div>
+          <form onSubmit={createUser} className="grid gap-3 sm:grid-cols-2">
+            <input className={inp} placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+            <input className={inp} placeholder="Name (optional)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            <input className={inp} type="password" placeholder="Temp password (≥ 8 chars)" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
+            <div className="grid grid-cols-2 gap-3">
+              <select className={inp} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+                <option value="user">Role: User</option>
+                <option value="admin">Role: Admin</option>
+              </select>
+              <select className={inp} value={form.plan} onChange={(e) => setForm({ ...form, plan: e.target.value })}>
+                <option value="free">Plan: Free</option>
+                <option value="trial">Plan: Trial (30d)</option>
+                <option value="pro">Plan: Pro</option>
+                <option value="premium">Plan: Premium</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-3 sm:col-span-2">
+              <Button type="submit" disabled={creating}>{creating ? "Creating…" : "Create user"}</Button>
+              {createMsg && <span className={`text-sm ${createMsg.ok ? "text-success" : "text-destructive"}`}>{createMsg.text}</span>}
+            </div>
+            <p className="text-xs text-muted-foreground sm:col-span-2">Admin role requires super-admin. The user can sign in immediately with this password (ask them to change it).</p>
+          </form>
+        </Card>
+      )}
+
       <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search email…"
         className="w-full max-w-sm rounded-md border border-border bg-transparent px-3 py-2 text-sm" />
       <Card className="divide-y divide-border">

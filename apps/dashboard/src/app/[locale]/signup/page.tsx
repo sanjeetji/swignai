@@ -22,6 +22,7 @@ function SignupInner() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [referral, setReferral] = useState(useSearchParams().get("ref") || "");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -42,7 +43,10 @@ function SignupInner() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null); setBusy(true);
+    setError(null);
+    if (password.length < 8) { setError("Password must be at least 8 characters."); return; }
+    if (password !== confirm) { setError("Passwords do not match."); return; }
+    setBusy(true);
     try {
       const tk = await api.register(email, password, name || undefined, referral.trim() || undefined);
       setSession(tk.access_token, tk.refresh_token);
@@ -62,6 +66,8 @@ function SignupInner() {
         <input className={authInput} placeholder={t("auth.name")} value={name} onChange={(e) => setName(e.target.value)} />
         <input className={authInput} placeholder={t("auth.email")} value={email} onChange={(e) => setEmail(e.target.value)} />
         <PasswordInput placeholder={t("auth.password")} value={password} onChange={setPassword} />
+        <PasswordInput placeholder="Confirm password" value={confirm} onChange={setConfirm} />
+        {confirm.length > 0 && password !== confirm && <p className="text-xs text-destructive">Passwords don't match</p>}
         <input className={authInput} placeholder={t("auth.referralOptional")} value={referral} onChange={(e) => setReferral(e.target.value.toUpperCase())} />
 
         <div className="space-y-1.5 pt-1">

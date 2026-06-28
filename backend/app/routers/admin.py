@@ -26,6 +26,58 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 
 # ---------------- Users (blueprint/18) ----------------
+class CreateUserIn(BaseModel):
+    email: str
+    name: str | None = None
+    password: str
+    role: str = "user"            # "user" | "admin"
+    plan: str = "free"            # starting plan so they aren't paywalled: free | trial | pro | premium
+
+
+@router.post("/users")
+async def create_user(body: CreateUserIn, admin=Depends(require_permissions("users.block")),
+                      db: AsyncSession = Depends(get_db)):
+    """Admin-create a normal or admin user. Creating an admin requires super_admin (no
+    privilege escalation). The new user starts on the given plan (default free) so they can
+    log in without hitting the paywall."""
+    from ..core.security import hash_password
+    from ..models.billing import Subscription
+    from ..models.user import Role, UserRole
+    from ..services.rbac import user_roles
+    from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+
+    if body.role not in ("user", "admin"):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "role must be 'user' or 'admin'")
+    if body.role == "admin" and "super_admin" not in await user_roles(db, admin):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only a super admin can create admin users")
+    if len(body.password or "") < 8:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Password must be at least 8 characters")
+    if (await db.execute(select(User).where(User.email == body.email))).scalar_one_or_none():
+        raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered")
+
+    u = User(email=body.email, name=body.name, password_hash=hash_password(body.password),
+             subscription_tier=body.plan if body.plan in ("free", "trial", "pro", "premium") else "free")
+    db.add(u)
+    await db.flush()
+    for rname in (["user", "admin"] if body.role == "admin" else ["user"]):
+        role = (await db.execute(select(Role).where(Role.name == rname))).scalar_one_or_none()
+        if role:
+            db.add(UserRole(user_id=u.id, role_id=role.id))
+    # Give them an entitlement so they aren't immediately walled.
+    if body.plan == "trial":
+        db.add(Subscription(user_id=u.id, plan="trial", status="trialing",
+                            current_period_end=_dt.now(_tz.utc) + _td(days=30)))
+    elif body.plan in ("pro", "premium"):
+        db.add(Subscription(user_id=u.id, plan=body.plan, status="active",
+                            current_period_end=_dt.now(_tz.utc) + _td(days=30)))
+    else:
+        db.add(Subscription(user_id=u.id, plan="free", status="active", current_period_end=None))
+    await ev.admin(db, "user.created_by_admin", user=admin, resource="user", resource_id=u.id,
+                   payload={"email": body.email, "role": body.role, "plan": body.plan})
+    await db.commit()
+    return {"id": str(u.id), "email": u.email, "name": u.name, "role": body.role, "plan": body.plan}
+
+
 @router.get("/users")
 async def list_users(q: str | None = None, page: int = 1, size: int = 25,
                      _=Depends(require_permissions("users.read")), db: AsyncSession = Depends(get_db)):

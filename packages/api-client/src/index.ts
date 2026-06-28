@@ -169,6 +169,8 @@ export const api = {
 
   // admin
   adminUsers: (token: string, q = "") => req<any>(`/api/admin/users?q=${encodeURIComponent(q)}`, {}, token),
+  adminCreateUser: (token: string, body: { email: string; name?: string; password: string; role?: string; plan?: string }) =>
+    req<any>("/api/admin/users", { method: "POST", body: JSON.stringify(body) }, token),
   adminMetrics: (token: string) => req<any>("/api/admin/metrics", {}, token),
   blockUser: (token: string, id: string) => req<any>(`/api/admin/users/${id}/block`, { method: "POST" }, token),
   unblockUser: (token: string, id: string) => req<any>(`/api/admin/users/${id}/unblock`, { method: "POST" }, token),
