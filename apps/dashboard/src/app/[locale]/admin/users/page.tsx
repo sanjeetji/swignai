@@ -13,6 +13,9 @@ export default function AdminUsers() {
   const { locale } = useParams<{ locale: string }>();
   const [data, setData] = useState<any>(null);
   const [q, setQ] = useState("");
+  const [fRole, setFRole] = useState("");
+  const [fPlan, setFPlan] = useState("");
+  const [fStatus, setFStatus] = useState("");
   const [denied, setDenied] = useState(false);
   const [open, setOpen] = useState<string | null>(null);   // expanded user id
   const [detail, setDetail] = useState<any>(null);
@@ -24,8 +27,8 @@ export default function AdminUsers() {
 
   const load = useCallback(() => {
     if (!token) return;
-    api.adminUsers(token, q).then(setData).catch(() => setDenied(true));
-  }, [token, q]);
+    api.adminUsers(token, { q, role: fRole, plan: fPlan, status: fStatus }).then(setData).catch(() => setDenied(true));
+  }, [token, q, fRole, fPlan, fStatus]);
 
   useEffect(() => { if (token) load(); }, [token, load]);
 
@@ -92,16 +95,34 @@ export default function AdminUsers() {
         </Card>
       )}
 
-      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search email…"
-        className="w-full max-w-sm rounded-md border border-border bg-transparent px-3 py-2 text-sm" />
+      <div className="flex flex-wrap items-center gap-2">
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search email…"
+          className="min-w-48 flex-1 rounded-md border border-border bg-transparent px-3 py-2 text-sm" />
+        <select className={inp} value={fRole} onChange={(e) => setFRole(e.target.value)}>
+          <option value="">All roles</option><option value="user">User</option><option value="admin">Admin</option><option value="super_admin">Super admin</option>
+        </select>
+        <select className={inp} value={fPlan} onChange={(e) => setFPlan(e.target.value)}>
+          <option value="">All plans</option><option value="free">Free</option><option value="trial">Trial</option><option value="pro">Pro</option><option value="premium">Premium</option>
+        </select>
+        <select className={inp} value={fStatus} onChange={(e) => setFStatus(e.target.value)}>
+          <option value="">Any status</option><option value="active">Active</option><option value="blocked">Blocked</option>
+        </select>
+      </div>
       <Card className="divide-y divide-border">
         {data?.users?.map((u: any) => (
           <div key={u.id} className="px-4 py-3 text-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <button className="text-left" onClick={() => openDetail(u.id)}>
-                <div>{u.email} {u.blocked && <span className="text-destructive">· blocked</span>}</div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span>{u.email}</span>
+                  <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase">{u.tier || "free"}</span>
+                  {(u.roles || []).filter((r: string) => r !== "user").map((r: string) => (
+                    <span key={r} className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium uppercase text-primary">{r.replace("_", " ")}</span>
+                  ))}
+                  {u.blocked && <span className="rounded-full bg-destructive/15 px-1.5 py-0.5 text-[10px] font-medium uppercase text-destructive">blocked</span>}
+                </div>
                 <div className="text-xs text-muted-foreground">
-                  {u.tier} · joined {String(u.created_at).slice(0, 10)} · {open === u.id ? "▲ hide" : "▼ sessions"}
+                  joined {String(u.created_at).slice(0, 10)} · {open === u.id ? "▲ hide" : "▼ sessions"}
                 </div>
               </button>
               <div className="flex gap-2">
@@ -135,6 +156,16 @@ export default function AdminUsers() {
                         <span className="text-muted-foreground">{h.ip} · {String(h.at).slice(0, 16)}</span>
                       </div>
                     ))}
+                    {/* Revenue ops: change / grant a plan */}
+                    <div className="mb-1 mt-3 font-medium">Plan · revenue ops</div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {["free", "trial", "pro", "premium"].map((pl) => (
+                        <Button key={pl} size="sm" variant={u.tier === pl ? "default" : "outline"}
+                          onClick={() => token && act(api.adminSetPlan(token, u.id, pl, 30))}>
+                          {pl === "trial" ? "Grant 30d trial" : `Set ${pl}`}
+                        </Button>
+                      ))}
+                    </div>
                   </>
                 )}
               </div>

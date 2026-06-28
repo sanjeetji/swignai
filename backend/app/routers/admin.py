@@ -80,20 +80,96 @@ async def create_user(body: CreateUserIn, admin=Depends(require_permissions("use
 
 @router.get("/users")
 async def list_users(q: str | None = None, page: int = 1, size: int = 25,
+                     role: str | None = None, plan: str | None = None, status: str | None = None,
                      _=Depends(require_permissions("users.read")), db: AsyncSession = Depends(get_db)):
+    from collections import defaultdict
+    from ..models.user import Role, UserRole
+
     stmt = select(User)
     if q:
         stmt = stmt.where(User.email.ilike(f"%{q}%"))
+    if plan:
+        stmt = stmt.where(User.subscription_tier == plan)
+    if status == "blocked":
+        stmt = stmt.where(User.is_blocked == True)  # noqa: E712
+    elif status == "active":
+        stmt = stmt.where(User.is_blocked == False)  # noqa: E712
+    if role:
+        rsub = select(UserRole.user_id).join(Role, Role.id == UserRole.role_id).where(Role.name == role)
+        stmt = stmt.where(User.id.in_(rsub))
+
     total = (await db.execute(select(func.count()).select_from(stmt.subquery()))).scalar_one()
     rows = (await db.execute(stmt.order_by(desc(User.created_at)).offset((page - 1) * size).limit(size))).scalars().all()
+
+    # roles for just this page
+    ids = [u.id for u in rows]
+    rolemap: dict = defaultdict(list)
+    if ids:
+        rr = (await db.execute(
+            select(UserRole.user_id, Role.name).join(Role, Role.id == UserRole.role_id).where(UserRole.user_id.in_(ids))
+        )).all()
+        for uid, rn in rr:
+            rolemap[uid].append(rn)
+
     return {
         "total": total, "page": page, "size": size,
         "users": [
             {"id": str(u.id), "email": u.email, "name": u.name, "tier": u.subscription_tier,
-             "blocked": u.is_blocked, "created_at": str(u.created_at)}
+             "roles": rolemap.get(u.id, []), "blocked": u.is_blocked, "created_at": str(u.created_at)}
             for u in rows
         ],
     }
+
+
+class SetPlanIn(BaseModel):
+    plan: str            # free | trial | pro | premium
+    days: int = 30       # period length for trial / paid
+
+
+@router.post("/users/{user_id}/plan")
+async def set_user_plan(user_id: str, body: SetPlanIn, admin=Depends(require_permissions("users.block")),
+                        db: AsyncSession = Depends(get_db)):
+    """Admin change/grant a user's plan (revenue ops): switch to free, grant/extend a trial, or
+    set a paid plan for N days. Creates a fresh subscription that supersedes any lapsed one."""
+    from ..models.billing import Subscription
+    u = await db.get(User, uuid.UUID(user_id))
+    if not u:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    plan = body.plan
+    now = datetime.now(timezone.utc)
+    if plan == "free":
+        db.add(Subscription(user_id=u.id, plan="free", status="active", current_period_end=None))
+    elif plan == "trial":
+        db.add(Subscription(user_id=u.id, plan="trial", status="trialing",
+                            current_period_end=now + timedelta(days=body.days)))
+    elif plan in ("pro", "premium"):
+        db.add(Subscription(user_id=u.id, plan=plan, status="active",
+                            current_period_end=now + timedelta(days=body.days)))
+    else:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "plan must be free | trial | pro | premium")
+    u.subscription_tier = plan
+    await ev.admin(db, "billing.plan_set_by_admin", user=admin, resource="user", resource_id=u.id,
+                   payload={"plan": plan, "days": body.days})
+    await db.commit()
+    return {"ok": True, "plan": plan, "days": body.days}
+
+
+@router.get("/payments")
+async def list_payments(limit: int = 50, _=Depends(require_permissions("analytics.view")),
+                        db: AsyncSession = Depends(get_db)):
+    """Recent payment transactions (revenue ops) with the payer's email."""
+    from ..models.billing import Payment
+    rows = (await db.execute(select(Payment).order_by(desc(Payment.created_at)).limit(limit))).scalars().all()
+    emails: dict = {}
+    ids = list({r.user_id for r in rows})
+    if ids:
+        for uid, email in (await db.execute(select(User.id, User.email).where(User.id.in_(ids)))).all():
+            emails[uid] = email
+    return {"payments": [
+        {"id": str(p.id), "email": emails.get(p.user_id, "—"), "amount_inr": float(p.amount_inr),
+         "status": p.status, "razorpay_payment_id": p.razorpay_payment_id, "at": str(p.created_at)[:16]}
+        for p in rows
+    ]}
 
 
 @router.post("/users/{user_id}/block")

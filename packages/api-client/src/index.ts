@@ -168,11 +168,21 @@ export const api = {
     req<any>(`/api/paper-trade/${id}/trail`, { method: "POST", body: JSON.stringify({ new_stop }) }, token),
 
   // admin
-  adminUsers: (token: string, q = "") => req<any>(`/api/admin/users?q=${encodeURIComponent(q)}`, {}, token),
+  adminUsers: (token: string, params: { q?: string; role?: string; plan?: string; status?: string } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.q) qs.set("q", params.q);
+    if (params.role) qs.set("role", params.role);
+    if (params.plan) qs.set("plan", params.plan);
+    if (params.status) qs.set("status", params.status);
+    return req<any>(`/api/admin/users?${qs.toString()}`, {}, token);
+  },
   adminCreateUser: (token: string, body: { email: string; name?: string; password: string; role?: string; plan?: string }) =>
     req<any>("/api/admin/users", { method: "POST", body: JSON.stringify(body) }, token),
   adminMetrics: (token: string) => req<any>("/api/admin/metrics", {}, token),
   adminMetricsSeries: (token: string, days = 30) => req<any>(`/api/admin/metrics/series?days=${days}`, {}, token).catch(() => ({ series: [], plan_mix: [] })),
+  adminSetPlan: (token: string, id: string, plan: string, days = 30) =>
+    req<any>(`/api/admin/users/${id}/plan`, { method: "POST", body: JSON.stringify({ plan, days }) }, token),
+  adminPayments: (token: string, limit = 50) => req<any>(`/api/admin/payments?limit=${limit}`, {}, token).catch(() => ({ payments: [] })),
   blockUser: (token: string, id: string) => req<any>(`/api/admin/users/${id}/block`, { method: "POST" }, token),
   unblockUser: (token: string, id: string) => req<any>(`/api/admin/users/${id}/unblock`, { method: "POST" }, token),
   forceLogout: (token: string, id: string) => req<any>(`/api/admin/users/${id}/force-logout`, { method: "POST" }, token),
