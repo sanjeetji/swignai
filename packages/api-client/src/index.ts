@@ -180,6 +180,7 @@ export const api = {
     req<any>("/api/admin/users", { method: "POST", body: JSON.stringify(body) }, token),
   adminMetrics: (token: string) => req<any>("/api/admin/metrics", {}, token),
   adminMetricsSeries: (token: string, days = 30) => req<any>(`/api/admin/metrics/series?days=${days}`, {}, token).catch(() => ({ series: [], plan_mix: [] })),
+  adminEngagement: (token: string) => req<any>("/api/admin/metrics/engagement", {}, token).catch(() => null),
   adminExportUsers: async (token: string, params: { q?: string; role?: string; plan?: string; status?: string } = {}) => {
     const qs = new URLSearchParams();
     Object.entries(params).forEach(([k, v]) => { if (v) qs.set(k, v); });

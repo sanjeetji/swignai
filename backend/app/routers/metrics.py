@@ -255,3 +255,53 @@ async def admin_metrics_series(days: int = 30, _=Depends(require_permissions("an
     mix = (await db.execute(select(User.subscription_tier, func.count()).group_by(User.subscription_tier))).all()
     plan_mix = [{"plan": (t or "free"), "count": c} for t, c in mix]
     return {"series": series, "plan_mix": plan_mix, "days": days}
+
+
+@router.get("/api/admin/metrics/engagement")
+async def admin_engagement(_=Depends(require_permissions("analytics.view")),
+                           db: AsyncSession = Depends(get_db)):
+    """Engagement & retention (the Phase-2 'are users coming back?' question): DAU/WAU/MAU,
+    a trial→paid funnel, weekly signup-cohort retention, and a dormant-30d churn proxy.
+    Activity = a session touched (login or token refresh updates session.last_active_at)."""
+    from collections import defaultdict
+    from datetime import timedelta
+    from ..models.billing import Subscription
+    from ..models.session import UserSession
+    now = datetime.now(timezone.utc)
+
+    async def active(days: int) -> int:
+        return (await db.execute(select(func.count(func.distinct(UserSession.user_id)))
+                .where(UserSession.last_active_at >= now - timedelta(days=days)))).scalar() or 0
+    dau, wau, mau = await active(1), await active(7), await active(30)
+
+    total = (await db.execute(select(func.count()).select_from(User))).scalar_one()
+    trials = (await db.execute(select(func.count(func.distinct(Subscription.user_id)))
+              .where(Subscription.plan == "trial"))).scalar() or 0
+    paid = (await db.execute(select(func.count(func.distinct(Subscription.user_id)))
+            .where(Subscription.plan.in_(["pro", "premium"])))).scalar() or 0
+    funnel = {"signups": total, "trials": trials, "paid": paid,
+              "trial_pct": round(trials / total * 100, 1) if total else 0,
+              "paid_pct": round(paid / total * 100, 1) if total else 0,
+              "trial_to_paid_pct": round(paid / trials * 100, 1) if trials else 0}
+
+    # weekly signup cohorts (last 6 weeks) with retention = active in the last 14 days
+    active14 = set((await db.execute(select(func.distinct(UserSession.user_id))
+                   .where(UserSession.last_active_at >= now - timedelta(days=14)))).scalars().all())
+    users = (await db.execute(select(User.id, User.created_at))).all()
+    coh: dict = defaultdict(lambda: {"signups": 0, "retained": 0})
+    for uid, created in users:
+        if not created:
+            continue
+        c = created if created.tzinfo else created.replace(tzinfo=timezone.utc)
+        wk = (c - timedelta(days=c.weekday())).date()           # Monday of that week
+        coh[wk]["signups"] += 1
+        if uid in active14:
+            coh[wk]["retained"] += 1
+    weeks = sorted(coh.keys())[-6:]
+    cohorts = [{"week": str(w), "signups": coh[w]["signups"], "retained": coh[w]["retained"],
+                "retention_pct": round(coh[w]["retained"] / coh[w]["signups"] * 100) if coh[w]["signups"] else 0}
+               for w in weeks]
+
+    dormant_pct = round((total - mau) / total * 100, 1) if total else 0
+    return {"dau": dau, "wau": wau, "mau": mau, "total_users": total,
+            "funnel": funnel, "cohorts": cohorts, "dormant_30d_pct": dormant_pct}
