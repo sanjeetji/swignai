@@ -98,7 +98,16 @@ ensure_docker() {
   warn "Docker daemon not reachable."
   if command -v colima &>/dev/null; then
     log "Starting Colima (Docker runtime)…"
-    colima start || { err "colima start failed"; return 1; }
+    if ! colima start; then
+      # Common failure: "attach disk in use by instance colima" — a previous session left an
+      # orphaned colima daemon / limactl process holding the VM disk lock. Reap it and retry once.
+      warn "colima start failed — clearing a stale VM lock and retrying once…"
+      colima stop --force &>/dev/null || true
+      pkill -f 'colima daemon' 2>/dev/null || true
+      pkill -f 'limactl' 2>/dev/null || true
+      sleep 2
+      colima start || { err "colima start failed again. Try: colima stop -f && colima start (last resort: colima delete && colima start)"; return 1; }
+    fi
     printf "  %-22s" "waiting for docker"
     local waited=0
     until docker info &>/dev/null; do
