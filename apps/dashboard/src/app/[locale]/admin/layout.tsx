@@ -29,14 +29,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <ThemeToggle />
         </div>
       </header>
-      <div className="mx-auto flex max-w-6xl gap-6 px-6 py-6">
-        <nav className="w-44 shrink-0 space-y-1">
+      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:flex-row">
+        {/* Responsive nav: horizontal scroll on mobile, vertical sidebar on desktop */}
+        <nav className="-mx-1 flex shrink-0 gap-1 overflow-x-auto px-1 pb-1 lg:mx-0 lg:w-44 lg:flex-col lg:space-y-1 lg:overflow-visible lg:px-0 lg:pb-0">
           {NAV.map(([slug, label]) => {
             const href = slug ? `${base}/${slug}` : base;
             const active = pathname === href;
             return (
               <Link key={slug} href={href}
-                className={`block rounded-md px-3 py-2 text-sm ${active ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>
+                className={`whitespace-nowrap rounded-md px-3 py-2 text-sm transition-colors ${active ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>
                 {label}
               </Link>
             );

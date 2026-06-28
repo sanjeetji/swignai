@@ -27,7 +27,7 @@ export default function AdminFlags() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Feature flags</h1>
+      <h1 className="text-2xl font-bold tracking-tight">Feature flags</h1>
       <p className="text-sm text-muted-foreground">
         Runtime kill-switches. Turning a flag off makes its feature read as unavailable (404) instantly.
       </p>

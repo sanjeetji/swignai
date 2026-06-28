@@ -47,7 +47,7 @@ export default function AdminIntegrations() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Integrations & secrets</h1>
+      <h1 className="text-2xl font-bold tracking-tight">Integrations &amp; secrets</h1>
       <p className="text-sm text-muted-foreground">Keys are encrypted at rest and never shown again.</p>
       {KNOWN.map(({ provider, category }) => {
         const row = byProvider(provider);

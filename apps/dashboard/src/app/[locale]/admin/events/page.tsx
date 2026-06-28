@@ -41,7 +41,7 @@ export default function AdminEvents() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Event logs</h1>
+      <h1 className="text-2xl font-bold tracking-tight">Event logs</h1>
       <div className="flex flex-wrap items-center gap-3">
         <select value={category} onChange={(e) => setCategory(e.target.value)}
           className="rounded-md border border-border bg-background px-2 py-1 text-sm">

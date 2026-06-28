@@ -63,7 +63,7 @@ export default function AdminUsers() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-xl font-semibold">Users ({data?.total ?? "…"})</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Users ({data?.total ?? "…"})</h1>
         <Button size="sm" onClick={() => setShowCreate((s) => !s)}>{showCreate ? "Close" : "+ Create user"}</Button>
       </div>
 
