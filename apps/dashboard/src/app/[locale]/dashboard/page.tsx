@@ -34,26 +34,32 @@ function DashboardInner() {
   // Load picks; if the DB is empty (first run / after `fresh`), kick off the screener pipeline
   // and poll until today's picks land — the server keeps running even if the trigger request
   // exceeds the client timeout. The top progress bar shows throughout (each call is in-flight).
-  const loadPicks = useCallback(async (tok: string) => {
+  // `alive()` lets the effect cancel all polling on unmount / token change, so loops never
+  // accumulate across mounts (which was hammering /api/daily-picks, even after logout).
+  const loadPicks = useCallback(async (tok: string, alive: () => boolean) => {
     const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
     let p = await api.dailyPicks().catch(() => null);
-    if (p?.picks?.length) { setPicks(p); return; }   // already have picks → done
+    if (!alive()) return;
+    if (p?.picks?.length) { setPicks(p); return; }   // already have picks → done, no polling
     if (!tok) { setPicks(p); return; }
 
-    // Empty DB (first run): the server scans NIFTY 50 first (fast paint), then the full universe.
+    // Empty DB (first run only): the server scans NIFTY 50 first (fast paint), then the full universe.
     setFetchingData(true);
     api.refreshPicks(tok).catch(() => {});
-    for (let i = 0; i < 30; i++) {                    // wait ~90s for the fast NIFTY 50 picks
+    for (let i = 0; i < 30 && alive(); i++) {          // wait ~90s for the fast NIFTY 50 picks
       await sleep(3000);
+      if (!alive()) break;
       p = await api.dailyPicks().catch(() => null);
       if (p?.picks?.length) { setPicks(p); break; }
     }
+    if (!alive()) return;
     setFetchingData(false);
 
     // Quietly upgrade to the broader NIFTY 500 picks when the full scan finishes (no loader).
-    let key = p?.picks?.map((x: any) => x.symbol).join(",") || "";
-    for (let i = 0; i < 90; i++) {                    // up to ~10 min
+    const key = p?.picks?.map((x: any) => x.symbol).join(",") || "";
+    for (let i = 0; i < 40 && alive(); i++) {          // up to ~5 min, then stop
       await sleep(7000);
+      if (!alive()) return;
       const np = await api.dailyPicks().catch(() => null);
       const k = np?.picks?.map((x: any) => x.symbol).join(",") || "";
       if (k && k !== key) { setPicks(np); break; }
@@ -77,9 +83,11 @@ function DashboardInner() {
 
   useEffect(() => {
     if (!token) return;
+    let alive = true;
     api.me(token).then(setMe).catch(() => {});
-    loadPicks(token);
+    loadPicks(token, () => alive);
     refresh(token);
+    return () => { alive = false; };   // cancel polling on unmount / token change
   }, [token, refresh, loadPicks]);
 
   const hasTrades = analytics?.trades > 0;
