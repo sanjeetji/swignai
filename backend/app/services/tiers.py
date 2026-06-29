@@ -26,6 +26,8 @@ def rank(tier: str) -> int:
 
 
 async def effective_tier(db: AsyncSession, user) -> str:
+    if await _is_admin(db, user):
+        return "premium"                    # admins always get full (top-tier) access
     sub = (await db.execute(
         select(Subscription).where(Subscription.user_id == user.id).order_by(Subscription.created_at.desc())
     )).scalars().first()
@@ -46,6 +48,8 @@ async def effective_tier(db: AsyncSession, user) -> str:
 def require_tier(min_tier: str):
     """Dependency: 402 unless the user's effective tier ≥ min_tier."""
     async def _dep(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+        if await _is_admin(db, user):
+            return user                     # admins bypass every tier gate
         t = await effective_tier(db, user)
         if rank(t) < rank(min_tier):
             raise HTTPException(status.HTTP_402_PAYMENT_REQUIRED,
@@ -62,8 +66,10 @@ async def access_state(db: AsyncSession, user) -> dict:
       - Free plan (or never subscribed) → permanent basic access (not walled).
       - Trial → full access until it ends; the moment it ends → WALLED.
       - Paid → full access until period end; then a PAID_GRACE_DAYS grace; after that → WALLED.
-    Returns {tier, state, walled, days_left, reason}. Admin bypass is handled by the caller.
+    Returns {tier, state, walled, days_left, reason}. Admins always have full access.
     """
+    if await _is_admin(db, user):
+        return {"tier": "premium", "state": "admin", "walled": False, "days_left": None, "reason": None}
     sub = (await db.execute(
         select(Subscription).where(Subscription.user_id == user.id).order_by(Subscription.created_at.desc())
     )).scalars().first()

@@ -68,7 +68,8 @@ function ShellInner({ children }: { children: React.ReactNode }) {
     { slug: "journal", label: t("nav.journal"), Icon: BookOpenText },
     { slug: "analytics", label: t("nav.analytics"), Icon: BarChart3 },
     { slug: "watchlist", label: t("nav.watchlist"), Icon: Star },
-    { slug: "billing", label: t("nav.billing"), Icon: CreditCard },
+    // Admins have full access and aren't billed → no Plans/Billing for them.
+    ...(!isAdmin ? [{ slug: "billing", label: t("nav.billing"), Icon: CreditCard } as NavItem] : []),
     { slug: "settings", label: t("nav.settings"), Icon: Settings },
     ...(isAdmin ? [{ slug: "admin", label: t("nav.admin"), Icon: ShieldCheck, admin: true } as NavItem] : []),
   ];
@@ -144,14 +145,14 @@ function ShellInner({ children }: { children: React.ReactNode }) {
             <button onClick={stopImpersonation} className="rounded-md border border-warning/40 px-2 py-0.5 text-xs font-medium hover:bg-warning/20">Exit</button>
           </div>
         )}
-        {trialDaysLeft != null && trialDaysLeft > 0 && (
+        {!isAdmin && trialDaysLeft != null && trialDaysLeft > 0 && (
           <div className={`flex flex-wrap items-center justify-center gap-3 px-4 py-2 text-center text-sm ${
             trialDaysLeft <= 3 ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}>
             <span>🎉 Free trial — <b>{trialDaysLeft} day{trialDaysLeft === 1 ? "" : "s"} left</b>. Upgrade to keep full access.</span>
             <Link href={href("billing")} className="rounded-md bg-primary px-2.5 py-0.5 text-xs font-semibold text-primary-foreground hover:opacity-90">Upgrade</Link>
           </div>
         )}
-        {graceDaysLeft != null && (
+        {!isAdmin && graceDaysLeft != null && (
           <div className="flex flex-wrap items-center justify-center gap-3 bg-destructive/10 px-4 py-2 text-center text-sm text-destructive">
             <span>⚠️ Your subscription has lapsed — <b>{graceDaysLeft} day{graceDaysLeft === 1 ? "" : "s"} of grace left</b>. Renew to avoid losing access.</span>
             <Link href={href("billing")} className="rounded-md bg-destructive px-2.5 py-0.5 text-xs font-semibold text-destructive-foreground hover:opacity-90">Renew</Link>

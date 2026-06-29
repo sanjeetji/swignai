@@ -91,6 +91,20 @@ function BillingInner() {
 
   const tier = sub?.tier || "free";
 
+  // Admins have full access and aren't billed — never show plans/checkout to them.
+  if (sub?.is_admin) {
+    return (
+      <Card className="flex flex-col items-center gap-3 p-10 text-center">
+        <Crown size={28} className="text-primary" />
+        <div className="text-lg font-semibold">Full admin access</div>
+        <p className="max-w-md text-sm text-muted-foreground">
+          You're an administrator — every feature is unlocked and there's nothing to pay. Plans and
+          billing apply to regular users only.
+        </p>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <p className="text-sm text-muted-foreground">
