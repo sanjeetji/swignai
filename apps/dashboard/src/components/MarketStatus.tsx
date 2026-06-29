@@ -35,9 +35,14 @@ export function MarketStatus() {
   if (!ms) return null;
 
   const open = ms.is_open;
-  const TrendIcon = ms.trend === "up" ? TrendingUp : ms.trend === "down" ? TrendingDown : Minus;
-  const trendCls = ms.trend === "up" ? "text-success" : ms.trend === "down" ? "text-destructive" : "text-muted-foreground";
   const lvl = ms.index.level;
+  // Color + arrow follow TODAY'S move (change vs previous close), not the regime — so a red day
+  // shows red/down even when the regime is still bull (price above EMA20).
+  const chg = ms.index.change_abs ?? ms.index.change_pct ?? 0;
+  const dir = chg > 0 ? "up" : chg < 0 ? "down" : "flat";
+  const TrendIcon = dir === "up" ? TrendingUp : dir === "down" ? TrendingDown : Minus;
+  const trendCls = dir === "up" ? "text-success" : dir === "down" ? "text-destructive" : "text-muted-foreground";
+  const sign = (n: number) => (n > 0 ? "+" : "");   // negatives already carry "−"
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card/60 px-4 py-3 backdrop-blur">
@@ -62,8 +67,11 @@ export function MarketStatus() {
           <div className={`flex items-center justify-end gap-1 font-semibold tabular-nums ${trendCls}`}>
             <TrendIcon size={15} />
             {lvl != null ? lvl.toLocaleString("en-IN") : "—"}
-            {ms.index.change_pct != null && (
-              <span className="text-xs">({ms.index.change_pct > 0 ? "+" : ""}{ms.index.change_pct}%)</span>
+            {(ms.index.change_abs != null || ms.index.change_pct != null) && (
+              <span className="text-xs">
+                ({ms.index.change_abs != null && <>{sign(ms.index.change_abs)}{ms.index.change_abs.toLocaleString("en-IN")} · </>}
+                {ms.index.change_pct != null ? `${sign(ms.index.change_pct)}${ms.index.change_pct}%` : ""})
+              </span>
             )}
           </div>
         </div>

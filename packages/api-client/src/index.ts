@@ -45,7 +45,7 @@ export interface MarketStatus {
   trend: "up" | "down" | "flat";
   index: {
     symbol: string; level: number | null; ema20: number | null; last_close: number | null;
-    change_pct: number | null; live: boolean; as_of: string | null;
+    change_abs: number | null; change_pct: number | null; live: boolean; as_of: string | null;
   };
   server_time_ist: string;
   disclaimer: string;
@@ -113,7 +113,7 @@ export const api = {
     if (params?.sector) q.set("sector", params.sector);
     if (params?.regime_bias) q.set("regime_bias", params.regime_bias);
     q.set("universe", params?.universe || "nifty50");
-    return req<{ scanning?: boolean; universe?: string; date: string; regime: string; count: number; results: any[] }>(`/api/scan?${q.toString()}`);
+    return req<{ scanning?: boolean; degraded?: boolean; universe?: string; date: string; regime: string; count: number; results: any[] }>(`/api/scan?${q.toString()}`);
   },
   cmsPage: (slug: string, locale = "en") => req<any>(`/api/cms/page/${slug}?locale=${locale}`),
   stockAnalysis: (symbol: string) => req<any>(`/api/stocks/${encodeURIComponent(symbol)}`),

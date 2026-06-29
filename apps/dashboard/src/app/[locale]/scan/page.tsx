@@ -1,7 +1,7 @@
 "use client";
 // NSE Scanner (blueprint/04) — rank the tradeable universe by deterministic score with
 // trend / relative-strength / volume, and filter by score / sector / regime bias.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Radar, ArrowUpRight } from "lucide-react";
@@ -47,27 +47,45 @@ function ScanInner() {
     if (token) api.portfolio(token).then((p) => setHeld(new Set((p.trades || []).map((t: any) => t.symbol)))).catch(() => {});
   }, [token]);
 
+  // Fetch the FULL ranked universe (filters are applied client-side below, so a dropdown
+  // change costs zero network calls). Depends only on `universe`. A run-token cancels stale
+  // poll loops on unmount / universe change so we never spam /api/scan (mirrors loadPicks).
+  const runTok = useRef(0);
   const run = useCallback(async () => {
+    const myTok = ++runTok.current;
+    const alive = () => myTok === runTok.current;
     setLoading(true); setScanning(false);
-    const q = { min_score: minScore || undefined, sector: sector || undefined, regime_bias: bias || undefined, universe };
-    let d = await api.scan(q).catch(() => null);
+    let d = await api.scan({ universe }).catch(() => null);
+    if (!alive()) return;
     setData(d);
     // A tier that isn't cached yet is scanned in the background — poll until results land.
     if (d?.scanning) {
       setScanning(true);
       const maxPolls = universe === "nifty500" ? 110 : universe === "nifty50" ? 18 : 60;
-      for (let i = 0; i < maxPolls; i++) {
+      for (let i = 0; i < maxPolls && alive(); i++) {
         await new Promise((r) => setTimeout(r, 4000));
-        d = await api.scan(q).catch(() => null);
-        if (d && !d.scanning) { setData(d); break; }
+        if (!alive()) return;
+        d = await api.scan({ universe }).catch(() => null);
+        if (!alive()) return;
+        if (d && !d.scanning) { setData(d); break; }   // includes degraded (rate-limited) → stop
       }
-      setScanning(false);
+      if (alive()) setScanning(false);
     }
-    setLoading(false);
-  }, [minScore, sector, bias, universe]);
+    if (alive()) setLoading(false);
+  }, [universe]);
+
+  // Client-side filters over the fetched results — instant, no network call.
+  const results = useMemo(() => {
+    let rows = data?.results || [];
+    if (minScore) rows = rows.filter((r: any) => r.score >= minScore);
+    if (sector) rows = rows.filter((r: any) => (r.sector || "") === sector);
+    if (bias === "valid") rows = rows.filter((r: any) => r.plan);
+    else if (bias === "bullish") rows = rows.filter((r: any) => /up/i.test(r.trend || ""));
+    return rows;
+  }, [data, minScore, sector, bias]);
 
   useEffect(() => { api.sectors().then((r) => setSectors(Object.keys(r.sectors))).catch(() => {}); }, []);
-  useEffect(() => { run(); }, [run]);
+  useEffect(() => { run(); return () => { runTok.current++; }; }, [run]);   // refetch on universe change; cancel stale polls
   useEffect(() => { loadHeld(); }, [loadHeld]);
 
   const selCls = "rounded-lg border border-border bg-background px-3 py-2 text-sm";
@@ -76,7 +94,7 @@ function ScanInner() {
     <div className="space-y-5">
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Radar className="text-primary" size={18} />
-        <span>Screening the <span className="font-medium text-foreground">{UNIVERSES.find((u) => u.v === universe)?.label}</span> — <span className="font-medium text-foreground">{data?.count ?? "…"}</span> stocks ranked for swing setups</span>
+        <span>Screening the <span className="font-medium text-foreground">{UNIVERSES.find((u) => u.v === universe)?.label}</span> — <span className="font-medium text-foreground">{data ? results.length : "…"}</span> stocks ranked for swing setups</span>
       </div>
 
       <RegimeBanner regime={data?.regime}
@@ -125,7 +143,7 @@ function ScanInner() {
             <div>Symbol</div><div>Price</div><div>Quant score</div><div>Rel str</div><div>Trend</div><div>Vol</div><div className="text-right">Action</div>
           </div>
           <div className="divide-y divide-border">
-            {data?.results?.map((r: any) => (
+            {results.map((r: any) => (
               <div key={r.symbol} className="grid grid-cols-2 items-center gap-3 px-4 py-3 text-sm sm:grid-cols-[1.3fr_0.8fr_1.1fr_0.8fr_0.9fr_0.7fr_auto]">
                 <div>
                   <div className="font-semibold">{r.symbol}</div>
@@ -158,11 +176,17 @@ function ScanInner() {
                 </div>
               </div>
             ))}
-            {!data?.results?.length && <div className="px-4 py-8 text-center text-sm text-muted-foreground">No stocks match these filters.</div>}
+            {!results.length && (
+              <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+                {data?.degraded
+                  ? "Live scan is busy (data provider rate-limited). Showing nothing right now — please run the scan again in a few minutes."
+                  : !data?.results?.length ? "No scan data yet for this universe — try Run scan." : "No stocks match these filters."}
+              </div>
+            )}
           </div>
         </Card>
       )}
-      <p className="text-xs text-muted-foreground">Deterministic technical screening over {data?.count ?? 0} NIFTY 500 stocks. <b className="text-foreground">Quant score</b> ranks strength; a <b className="text-foreground">Paper trade</b> button means a clean entry exists now (R:R ≥ 2). <span className="text-warning">Watchlist</span> = strong but wait for a setup. Educational, not advice.</p>
+      <p className="text-xs text-muted-foreground">Deterministic technical screening over {results.length} NIFTY 500 stocks. <b className="text-foreground">Quant score</b> ranks strength; a <b className="text-foreground">Paper trade</b> button means a clean entry exists now (R:R ≥ 2). <span className="text-warning">Watchlist</span> = strong but wait for a setup. Educational, not advice.</p>
     </div>
   );
 }

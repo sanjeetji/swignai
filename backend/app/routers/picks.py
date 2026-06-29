@@ -77,15 +77,28 @@ async def market_status(db: AsyncSession = Depends(get_db)):
     60s); otherwise we show the last available close from the daily pipeline."""
     now_ist = datetime.now(_IST)
     session = _nse_session(now_ist)
-    reg = (await db.execute(select(RegimeLog).order_by(desc(RegimeLog.date)).limit(1))).scalar_one_or_none()
+    # Latest two regime rows: [0] = most recent stored close, [1] = the prior day (for the
+    # day-change baseline when the market is closed).
+    rows = (await db.execute(select(RegimeLog).order_by(desc(RegimeLog.date)).limit(2))).scalars().all()
+    reg = rows[0] if rows else None
     last_close = float(reg.nifty_close) if reg and reg.nifty_close is not None else None
+    prev_close = float(rows[1].nifty_close) if len(rows) > 1 and rows[1].nifty_close is not None else None
     ema20 = float(reg.nifty_ema20) if reg and reg.nifty_ema20 is not None else None
     regime = (reg.regime if reg else None) or "unknown"
     as_of = str(reg.date) if reg else None
 
     live = await _live_nifty() if session in ("open", "pre-open") else None
-    level = live if live is not None else last_close
-    # Trend from the regime gate (the actual signal); fall back to level-vs-EMA20 if regime unknown.
+    # Current level + the baseline its day-change is measured against:
+    #  - market open: live now vs yesterday's close (today's pipeline hasn't run intraday)
+    #  - market closed: the latest stored close vs the prior day's close
+    if live is not None:
+        level, baseline = live, last_close
+    else:
+        level, baseline = last_close, prev_close
+    change_abs = round(level - baseline, 2) if (level is not None and baseline) else None
+    change_pct = round((level - baseline) / baseline * 100, 2) if (level is not None and baseline) else None
+
+    # Regime trend (the swing gate — kept separate from today's direction shown in the UI).
     if regime == "bull":
         trend = "up"
     elif regime == "bear":
@@ -94,19 +107,19 @@ async def market_status(db: AsyncSession = Depends(get_db)):
         trend = "up" if level >= ema20 else "down"
     else:
         trend = "flat"
-    change_pct = round((level - last_close) / last_close * 100, 2) if (live is not None and last_close) else None
 
     return {
         "session": session,                      # open | pre-open | closed
         "is_open": session == "open",
         "regime": regime,                        # bull | neutral | bear | unknown
-        "trend": trend,                          # up | down
+        "trend": trend,                          # regime-derived (NOT today's direction)
         "index": {
             "symbol": "NIFTY 50",
             "level": round(level, 2) if level is not None else None,
             "ema20": round(ema20, 2) if ema20 is not None else None,
             "last_close": round(last_close, 2) if last_close is not None else None,
-            "change_pct": change_pct,            # vs last close, only when a live value is fresh
+            "change_abs": change_abs,            # today's move in points (vs previous close)
+            "change_pct": change_pct,            # today's move in % (vs previous close)
             "live": live is not None,            # true = freshly fetched; false = last close
             "as_of": as_of,
         },
@@ -173,12 +186,16 @@ async def sectors():
 
 from ..data.nifty500 import SCAN_TIERS, tier_symbols as _tier_symbols  # noqa: E402
 
-_scan_jobs: set[str] = set()   # tiers currently being scanned (in-process guard)
+_scan_jobs: set[str] = set()          # tiers currently being scanned (in-process guard)
+_scan_cooldown: dict[str, float] = {}  # tier -> monotonic time until which we won't relaunch
+_SCAN_COOLDOWN_S = 300                  # after a degraded/rate-limited scan, back off 5 min
 
 
 async def _scan_tier_bg(tier: str):
     """Background: scan exactly the tier's symbols and cache the ranked result."""
+    import time as _time
     _scan_jobs.add(tier)
+    cached_ok = False
     try:
         from ..quant.scanner import scan_universe
         provider = get_provider(settings.DATA_PROVIDER,
@@ -201,10 +218,15 @@ async def _scan_tier_bg(tier: str):
         # Only cache a real result — never persist an empty/degraded scan (it would stick for hours).
         if data.get("results"):
             await cache_set(f"scan:tier:{tier}", json.dumps(data), ttl=60 * 60 * 12)
+            cached_ok = True
     except Exception:
         logging.getLogger("picks").exception("tier scan failed: %s", tier)
     finally:
         _scan_jobs.discard(tier)
+        # A scan that produced nothing cacheable (rate-limited / degraded fetch) → back off so we
+        # don't relaunch a live scan on every 4s client poll (the Angel One "access rate" storm).
+        if not cached_ok:
+            _scan_cooldown[tier] = _time.monotonic() + _SCAN_COOLDOWN_S
 
 
 @router.get("/api/scan")
@@ -233,6 +255,12 @@ async def scan(min_score: float = 0, sector: str | None = None, regime_bias: str
                 data = cd
 
     if data is None:
+        # Recently failed/rate-limited? Stop the client polling (and stop hammering the data
+        # provider) until the cooldown lapses — return a degraded, non-scanning response.
+        import time as _time
+        if _time.monotonic() < _scan_cooldown.get(tier, 0):
+            return {"scanning": False, "degraded": True, "universe": tier, "date": None,
+                    "regime": "unknown", "count": 0, "results": []}
         # nothing cached for this tier → kick off a background scan and tell the client to poll
         if tier not in _scan_jobs:
             import asyncio
