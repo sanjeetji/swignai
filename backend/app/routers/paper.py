@@ -24,15 +24,28 @@ router = APIRouter(prefix="/api/paper-trade", tags=["paper"])
 
 
 async def _live_prices() -> dict[str, float]:
-    """Latest close per symbol from the scanner cache (fast; no per-request market calls)."""
-    cached = await cache_get("scan:latest")
-    if not cached:
-        return {}
+    """Latest close per symbol from any cached scan (fast; no per-request market calls).
+    Merges the full daily scan (`scan:latest`) with every per-tier scan (`scan:tier:*`) so a
+    symbol's price is found even when only a tier scan has populated — `scan:latest` wins on ties."""
+    out: dict[str, float] = {}
+    keys = ["scan:latest"]
     try:
-        data = json.loads(cached)
-        return {r["symbol"]: float(r["price"]) for r in data.get("results", []) if r.get("price")}
-    except (ValueError, KeyError, TypeError):
-        return {}
+        from ..data.nifty500 import SCAN_TIERS
+        keys += [f"scan:tier:{t}" for t in SCAN_TIERS]
+    except Exception:
+        pass
+    for k in keys:
+        cached = await cache_get(k)
+        if not cached:
+            continue
+        try:
+            for r in json.loads(cached).get("results", []):
+                sym, px = r.get("symbol"), r.get("price")
+                if sym and px and sym not in out:
+                    out[sym] = float(px)
+        except (ValueError, KeyError, TypeError):
+            continue
+    return out
 
 
 async def _open_trades(db, user_id):
