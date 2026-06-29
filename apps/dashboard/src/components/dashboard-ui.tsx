@@ -2,28 +2,46 @@
 // Reusable dashboard widgets (blueprint/14 §3): regime banner, KPI stat card, score
 // breakdown bar, portfolio heat meter, skeleton. Token-driven (theme-aware), motion via
 // Framer Motion, and strictly real-data — empty/loading states are first-class.
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { TrendingUp, TrendingDown, Minus, type LucideIcon } from "lucide-react";
+import { api } from "@swingai/api-client";
 
 export function Skeleton({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse rounded-lg bg-muted/60 ${className}`} />;
 }
 
-const REGIME: Record<string, { label: string; cls: string; Icon: LucideIcon }> = {
-  bull: { label: "Bullish — trend is up", cls: "from-success/20 to-success/5 border-success/30 text-success", Icon: TrendingUp },
-  bear: { label: "Bearish — sitting in cash", cls: "from-destructive/20 to-destructive/5 border-destructive/30 text-destructive", Icon: TrendingDown },
-  neutral: { label: "Neutral — selective", cls: "from-warning/20 to-warning/5 border-warning/30 text-warning", Icon: Minus },
+// Regime is the swing GATE (NIFTY vs its 20-EMA), stated in the text — NOT a claim about today's
+// direction. The colour + arrow follow TODAY's NIFTY move (consistent with the market banner), so
+// a red day shows red/down even while the regime stays bullish ("trades allowed").
+const REGIME_LABEL: Record<string, string> = {
+  bull: "Bullish regime — trades allowed",
+  bear: "Bearish regime — sitting in cash",
+  neutral: "Neutral regime — be selective",
 };
+const DIR_STYLE = {
+  up: { cls: "from-success/20 to-success/5 border-success/30 text-success", Icon: TrendingUp },
+  down: { cls: "from-destructive/20 to-destructive/5 border-destructive/30 text-destructive", Icon: TrendingDown },
+  flat: { cls: "from-warning/20 to-warning/5 border-warning/30 text-warning", Icon: Minus },
+} as const;
 
 export function RegimeBanner({ regime, cashMode, note }: { regime?: string; cashMode?: boolean; note?: string }) {
   const key = cashMode ? "bear" : (regime || "neutral");
-  const r = REGIME[key] || REGIME.neutral;
+  const [chg, setChg] = useState<number | null>(null);
+  useEffect(() => {
+    let alive = true;
+    api.marketStatus().then((m) => { if (alive) setChg(m?.index?.change_abs ?? null); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  // Cash/bear = protective red regardless; otherwise follow today's NIFTY move.
+  const dir = cashMode ? "down" : chg == null ? "flat" : chg > 0 ? "up" : chg < 0 ? "down" : "flat";
+  const v = DIR_STYLE[dir];
   return (
     <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
-      className={`flex items-center gap-3 rounded-xl border bg-gradient-to-r p-4 ${r.cls}`}>
-      <r.Icon size={22} />
+      className={`flex items-center gap-3 rounded-xl border bg-gradient-to-r p-4 ${v.cls}`}>
+      <v.Icon size={22} />
       <div>
-        <div className="text-sm font-semibold">{note || r.label}</div>
+        <div className="text-sm font-semibold">{note || REGIME_LABEL[key] || REGIME_LABEL.neutral}</div>
         <div className="text-xs opacity-70">NIFTY regime gate · educational, not advice</div>
       </div>
     </motion.div>

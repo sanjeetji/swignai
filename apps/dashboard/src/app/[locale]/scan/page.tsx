@@ -98,7 +98,7 @@ function ScanInner() {
       </div>
 
       <RegimeBanner regime={data?.regime}
-        note={data?.regime === "bull" ? "Bullish regime confirmed — scanning for trend-following breakouts."
+        note={data?.regime === "bull" ? "Bullish regime — screening for trend-following setups."
           : data?.regime === "bear" ? "Bearish regime — capital-preservation mode." : undefined} />
 
       <Card className="flex flex-wrap items-end gap-3 p-4">
