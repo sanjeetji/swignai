@@ -41,6 +41,14 @@ function Cell({ label, value, cls = "" }: { label: string; value: React.ReactNod
 function OpenCard({ tr, exit, setExit, onClose, closing }: any) {
   const e = exit[tr.id] || {};
   const up = (tr.r_now ?? 0) >= 0;
+  // Stop → Entry → Target range bar with a live marker, so a losing position (price below entry)
+  // still reads clearly instead of a blank "0% to T1" bar.
+  const hasBar = tr.current_price != null && tr.stop != null && tr.target_1 != null && tr.target_1 > tr.stop;
+  const span = hasBar ? tr.target_1 - tr.stop : 0;
+  const pct = (x: number) => Math.max(0, Math.min(100, ((x - tr.stop) / span) * 100));
+  const curPct = hasBar ? pct(tr.current_price) : 0;
+  const entryPct = hasBar ? pct(tr.entry) : 0;
+  const inProfit = hasBar && tr.current_price >= tr.entry;
   return (
     <Card className="space-y-3 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -70,11 +78,22 @@ function OpenCard({ tr, exit, setExit, onClose, closing }: any) {
         <Cell label="T2 · 3R" value={inr(tr.target_2)} cls="text-success" />
       </div>
 
-      {tr.pct_to_target != null && (
+      {hasBar && (
         <div>
-          <div className="mb-1 flex justify-between text-[11px] text-muted-foreground"><span>Stop</span><span>{tr.pct_to_target}% to T1</span><span>Target</span></div>
-          <div className="relative h-1.5 overflow-hidden rounded-full bg-muted">
-            <div className="h-full rounded-full bg-success" style={{ width: `${tr.pct_to_target}%` }} />
+          <div className="mb-1 flex items-center justify-between text-[11px]">
+            <span className="text-destructive">Stop {inr(tr.stop)}</span>
+            <span className={inProfit ? "text-success" : "text-destructive"}>LTP {inr(tr.current_price)} · {signed(tr.r_now, "R")}</span>
+            <span className="text-success">T1 {inr(tr.target_1)}</span>
+          </div>
+          <div className="relative h-2 rounded-full bg-muted">
+            {/* fill from entry to current price, coloured by direction */}
+            <div className={`absolute top-0 h-full rounded-full ${inProfit ? "bg-success" : "bg-destructive"}`}
+              style={{ left: `${Math.min(entryPct, curPct)}%`, width: `${Math.max(1.5, Math.abs(curPct - entryPct))}%` }} />
+            {/* entry tick */}
+            <div className="absolute -top-0.5 h-3 w-px bg-foreground/50" style={{ left: `${entryPct}%` }} title={`Entry ${inr(tr.entry)}`} />
+            {/* current-price marker */}
+            <div className={`absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background ${inProfit ? "bg-success" : "bg-destructive"}`}
+              style={{ left: `${curPct}%` }} title={`Now ${inr(tr.current_price)}`} />
           </div>
         </div>
       )}

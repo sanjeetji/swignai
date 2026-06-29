@@ -21,6 +21,23 @@ from ..services.tiers import require_access, require_tier
 
 router = APIRouter(tags=["metrics"])
 
+# A single data provider reused per process for live quote look-ups (open-position current prices).
+# Reusing it keeps the provider login + scrip master + OHLCV memo warm so we don't re-authenticate
+# (and trip the rate limit) on every journal refresh. NOT used for scans (those mutate .universe).
+_QUOTE_PROVIDER = None
+
+
+def _quote_provider():
+    global _QUOTE_PROVIDER
+    if _QUOTE_PROVIDER is None:
+        from ..core.config import settings
+        from ..data.factory import get_provider
+        _QUOTE_PROVIDER = get_provider(
+            settings.DATA_PROVIDER,
+            **({"days": 600} if settings.DATA_PROVIDER == "synthetic" else {}),
+        )
+    return _QUOTE_PROVIDER
+
 
 def _summarize_screener(picks: list[AIPick]) -> dict:
     """Honest record of the SCREENER's own resolved picks (R-multiples)."""
@@ -99,6 +116,49 @@ async def my_trades(user: User = Depends(get_current_user), db: AsyncSession = D
         select(PaperTrade).where(PaperTrade.user_id == user.id).order_by(desc(PaperTrade.entry_date))
     )).scalars().all()
     prices = await _live_prices()
+    # Live fallback: open positions not covered by any cached scan still need a current price.
+    # Bounded (the risk engine caps open positions). Use a short per-symbol quote cache so a
+    # transient provider rate-limit never blanks a price on the next load, and we don't re-hit
+    # the provider on every journal refresh.
+    open_syms = {t.stock_symbol for t in rows if t.status == "open"}
+    missing = [s for s in open_syms if s not in prices]
+    if missing:
+        import asyncio
+        from ..core.redis import cache_get, cache_set
+
+        still: list[str] = []
+        for s in missing:
+            q = await cache_get(f"quote:{s}")
+            if q:
+                try:
+                    prices[s] = float(q)
+                    continue
+                except (TypeError, ValueError):
+                    pass
+            still.append(s)
+
+        def _fetch_missing(syms: list[str]) -> dict[str, float]:
+            import time
+            out: dict[str, float] = {}
+            try:
+                prov = _quote_provider()           # reused per-process (login + memo persist)
+                for i, s in enumerate(syms):
+                    try:
+                        df = prov.get_ohlcv(s)
+                        if df is not None and not df.empty:
+                            out[s] = float(df["close"].iloc[-1])
+                    except Exception:
+                        continue
+                    if i + 1 < len(syms):
+                        time.sleep(0.34)           # pace ~3 req/s (Angel One rate limit)
+            except Exception:
+                pass
+            return out
+        if still:
+            fetched = await asyncio.to_thread(_fetch_missing, still)
+            for s, px in fetched.items():
+                await cache_set(f"quote:{s}", str(px), ttl=600)   # 10 min
+            prices.update(fetched)
     now = datetime.now(timezone.utc)
 
     def fmt(t: PaperTrade) -> dict:
